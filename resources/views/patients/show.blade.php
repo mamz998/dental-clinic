@@ -1,0 +1,759 @@
+@extends('layouts.app')
+@section('title', $patient->name)
+
+@section('topbar-actions')
+    <a href="{{ route('appointments.create',['patient_id'=>$patient->id]) }}" class="btn btn-success btn-sm">📅 موعد</a>
+    <a href="{{ route('invoices.create',['patient_id'=>$patient->id]) }}" class="btn btn-sm" style="background:#f59e0b;color:#fff">💰 فاتورة</a>
+    <a href="{{ route('prescriptions.create',['patient_id'=>$patient->id]) }}" class="btn btn-pink btn-sm">💊 روشتة</a>
+    <a href="{{ route('patients.edit',$patient) }}" class="btn btn-outline btn-sm">✏️ تعديل</a>
+@endsection
+
+@section('content')
+
+@if($patient->hasRisk())
+<div class="medical-alert no-print">
+    <div class="medical-alert-icon">⚠️</div>
+    <div>
+        <h4>تحذير طبي — اقرأ قبل العلاج</h4>
+        <ul>
+            @if($patient->medicalHistory?->allergy_anesthesia) <li>حساسية من التخدير</li> @endif
+            @if($patient->medicalHistory?->allergy_penicillin) <li>حساسية من البنسيلين</li> @endif
+            @if($patient->medicalHistory?->has_diabetes) <li>مريض سكر</li> @endif
+            @if($patient->medicalHistory?->has_heart_disease) <li>مريض قلب</li> @endif
+            @if($patient->medicalHistory?->has_bleeding_disorder) <li>اضطراب نزيف</li> @endif
+            @if($patient->medicalHistory?->is_pregnant) <li>حامل</li> @endif
+        </ul>
+    </div>
+</div>
+@endif
+
+{{-- Patient header --}}
+<div class="card" style="padding:22px 28px;margin-bottom:22px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px">
+        <div style="display:flex;align-items:center;gap:18px">
+            <div style="width:60px;height:60px;border-radius:18px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;flex-shrink:0">
+                {{ mb_substr($patient->name,0,1) }}
+            </div>
+            <div>
+                <h2 style="font-size:21px;font-weight:800;color:#111827;margin-bottom:5px">{{ $patient->name }}</h2>
+                <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:#6b7280">
+                    <span>{{ $patient->gender==='male'?'♂ ذكر':'♀ أنثى' }}</span>
+                    @if($patient->age)<span>· {{ $patient->age }} سنة</span>@endif
+                    <span>· {{ $patient->phone }}</span>
+                </div>
+            </div>
+        </div>
+        @php $balance=$patient->balance; @endphp
+        @if($balance>0)
+        <div style="background:#fef2f2;border:1.5px solid #fecaca;border-radius:14px;padding:12px 20px;text-align:center">
+            <div style="font-size:11px;color:#dc2626;font-weight:700">رصيد مستحق</div>
+            <div style="font-size:22px;font-weight:800;color:#dc2626">{{ number_format($balance,0) }} ج</div>
+        </div>
+        @endif
+    </div>
+</div>
+
+{{-- Tabs --}}
+<div x-data="{tab:'chart'}">
+    <div style="display:flex;gap:2px;background:#f3f4f6;border-radius:14px;padding:4px;margin-bottom:22px;width:fit-content">
+        @foreach(['chart'=>'🦷 خريطة الأسنان','appointments'=>'📅 المواعيد','invoices'=>'💰 الفواتير','prescriptions'=>'💊 الروشتات','files'=>'📁 الملفات','medical'=>'⚕️ التاريخ الطبي'] as $k=>$lbl)
+        <button @click="tab='{{ $k }}'"
+            :style="tab==='{{ $k }}'?'background:#fff;color:#1d4ed8;box-shadow:0 1px 4px rgba(0,0,0,0.1)':'color:#6b7280'"
+            style="padding:9px 18px;border:none;background:none;cursor:pointer;font-family:Cairo,sans-serif;font-size:13.5px;font-weight:700;border-radius:10px;transition:all 0.15s;white-space:nowrap">
+            {{ $lbl }}
+        </button>
+        @endforeach
+    </div>
+
+    {{-- ═══════════════════════════════════
+         DENTAL CHART — أسنان حقيقية
+         ═══════════════════════════════════ --}}
+    <div x-show="tab==='chart'" x-cloak>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🦷 خريطة الأسنان</span>
+          <div style="display:flex;flex-wrap:wrap;gap:10px">
+            @foreach(['healthy'=>['سليم','#0d9488'],'filling'=>['حشو','#2563eb'],'crown'=>['تلبيسة','#7c3aed'],'root_canal'=>['علاج عصب','#d97706'],'missing'=>['مفقود','#9ca3af'],'needs_extraction'=>['خلع','#dc2626'],'implant'=>['زراعة','#0891b2']] as $s=>[$lbl,$clr])
+              <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#6b7280"><span style="width:10px;height:10px;border-radius:3px;background:{{ $clr }};display:inline-block"></span>{{ $lbl }}</div>
+            @endforeach
+          </div>
+        </div>
+
+        @php
+        $sc=['healthy'=>'#0d9488','filling'=>'#2563eb','crown'=>'#7c3aed',
+          'root_canal'=>'#d97706','missing'=>'#9ca3af','needs_extraction'=>'#dc2626',
+          'implant'=>'#0891b2','bridge'=>'#7c3aed','other'=>'#6b7280'];
+        $sl=['healthy'=>'سليم','filling'=>'حشو','crown'=>'تلبيسة','root_canal'=>'علاج عصب',
+          'missing'=>'مفقود','needs_extraction'=>'يحتاج خلع','implant'=>'زراعة','bridge'=>'جسر','other'=>'أخرى'];
+        @endphp
+
+        <div style="padding:16px;overflow-x:auto">
+        <svg viewBox="319 317 2989 4694" style="width:100%;max-width:460px;display:block;margin:0 auto" xmlns="http://www.w3.org/2000/svg">
+        <defs><style>
+          .tpath { transition: filter 0.2s, stroke-width 0.2s; }
+          .tellipse { opacity: 0; transition: opacity 0.2s; cursor: pointer; }
+        </style></defs>
+
+        {{-- Gum divider --}}
+        <line x1="319" y1="2746" x2="3308" y2="2746" stroke="#fda4af" stroke-width="6" opacity="0.4"/>
+        <text x="1813" y="2820" text-anchor="middle" font-size="80" fill="#fda4af" font-family="Cairo,Arial" opacity="0.6">الفك العلوي / السفلي</text>
+
+        {{-- Tooth paths --}}
+        @php $tn1=$teeth[1]??null; $ts1=$tn1?->status??'healthy'; $tc1=$sc[$ts1]??'#0d9488'; $tid1=$tn1?->id??0; @endphp
+        <g id="tpg1" data-tooth="1">
+          <path class="tpath" fill="none" stroke="{{ $tc1 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 1458.3881,554.75066 c 0.6515,6.0073 35.7326,67.86537 44.5769,95.80668 11.959,30.16587 31.0024,57.43634 81.7089,71.76589 41.4041,-5.08431 83.3971,-6.17156 118.2498,-55.7251 l 85.6853,-129.94853 15.6255,-41.33855 c 11.2826,-29.84887 -13.1515,-57.29546 -36.0262,-69.06007 l -62.0259,-16.54175 c -36.2266,-2.32123 -60.2722,-12.93929 -131.0566,8.27761 l -66.4174,14.48135 c -24.1618,10.65479 -56.427,6.48435 -57.0544,60.19566 1.2698,20.5305 -6.7716,39.48407 6.7341,62.08681 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc1 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 1521.9733,634.22774 -15.1854,-126.76433 c 8.2366,0.0216 -9.2676,-25.59094 21.6487,-37.01241 112.8983,-43.96557 178.1438,-11.7383 196.5578,-2.07163 18.414,9.66667 34.4001,36.10163 30.8674,63.87413 -3.5327,27.7725 -11.2639,34.44183 -16.5057,48.23282"/>
+        </g>
+        @php $tn2=$teeth[2]??null; $ts2=$tn2?->status??'healthy'; $tc2=$sc[$ts2]??'#0d9488'; $tid2=$tn2?->id??0; @endphp
+        <g id="tpg2" data-tooth="2">
+          <path class="tpath" fill="none" stroke="{{ $tc2 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 1197.9019,608.37924 c 133.3836,-87.56136 106.057,-62.00346 163.1449,-81.46972 19.899,-7.11186 36.4171,-8.17531 44.8139,5.28975 l 30.9531,31.11563 c 21.0352,26.43574 19.6353,32.04799 22.3054,41.43784 9.909,81.74292 -1.5425,80.7169 -3.7507,115.50782 -15.2528,29.61247 -33.6734,56.04063 -64.8377,69.65808 -19.2324,13.56757 -45.8659,12.23551 -74.158,7.5645 l -46.5222,-11.32873 c -18.2406,2.74299 -33.9563,-9.42236 -49.948,-19.95841 -33.7488,-23.69056 -42.4715,-57.31568 -54.0754,-89.79705 -2.3344,-21.00907 3.643,-39.61978 17.388,-55.98916 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc2 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 1235.4447,756.75389 c -17.9032,-27.84057 -46.563,-50.33799 -11.7959,-104.34158 31.8919,-24.8855 56.8499,-32.56684 84.6066,-47.19245 23.8932,-12.02856 47.6043,-23.69532 64.7136,-22.24445 71.2494,-6.84002 41.9157,10.18157 61.1661,15.67742"/>
+          <path class="tpath" fill="none" stroke="{{ $tc2 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 1384.9116,631.2827 c 6.099,31.90391 11.7816,64.63531 29.1161,74.21441"/>
+          <path class="tpath" fill="none" stroke="{{ $tc2 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 1344.0469,763.93479 c 2.5232,-27.17019 -37.0901,-38.6649 -69.6897,-52.76883"/>
+        </g>
+        @php $tn3=$teeth[3]??null; $ts3=$tn3?->status??'healthy'; $tc3=$sc[$ts3]??'#0d9488'; $tid3=$tn3?->id??0; @endphp
+        <g id="tpg3" data-tooth="3">
+          <path class="tpath" fill="none" stroke="{{ $tc3 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 1029.7313,963.1126 c -54.04551,-18.03069 -79.35465,-51.01802 -85.09854,-94.18863 -6.67722,-42.21018 0.69596,-83.37978 26.18471,-123.20773 22.2889,-62.02568 44.40643,-58.59101 66.54383,-62.75704 19.7474,2.49038 37.6952,1.35801 55.1745,-0.71763 52.834,-2.34103 72.5151,21.61881 85.2475,37.29227 44.5828,59.69905 39.6605,94.4833 50.503,137.20166 5.5775,47.16841 3.1173,87.49959 -20.9762,109.42821 -73.3066,54.82809 -85.7676,27.96255 -116.4466,25.55731 -57.13,-24.06183 -42.4358,-19.73665 -61.1322,-28.60842 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc3 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 996.27096,901.81789 c 2.56829,-58.38742 7.47644,-113.78078 34.85054,-140.42648 27.0868,-28.37645 61.9381,-48.94777 109.6313,-56.60973"/>
+          <path class="tpath" fill="none" stroke="{{ $tc3 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 1163.0311,756.56432 c 32.3257,125.75081 46.34,155.42872 -38.134,77.48663"/>
+          <path class="tpath" fill="none" stroke="{{ $tc3 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 1087.7131,877.91927 c 71.1713,86.13193 23.9636,73.39337 -52.6808,36.06911"/>
+        </g>
+        @php $tn4=$teeth[4]??null; $ts4=$tn4?->status??'healthy'; $tc4=$sc[$ts4]??'#0d9488'; $tid4=$tn4?->id??0; @endphp
+        <g id="tpg4" data-tooth="4">
+          <path class="tpath" fill="none" stroke="{{ $tc4 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 883.20038,954.97033 c -81.5943,28.41483 -86.9583,67.62067 -87.35078,107.53027 -4.15066,175.5425 144.86273,172.5709 173.72207,159.0761 45.40333,5.6227 76.93663,0.3992 101.75083,-10.0785 46.3335,-3.5547 68.651,-31.2515 76.0559,-73.9391 6.7825,-22.9142 9.0947,-48.0781 -2.3763,-80.1789 -8.3857,-17.9293 -2.6833,-35.1172 -54.1657,-55.3144 -54.2861,-5.98353 -71.4704,-19.75252 -93.8749,-34.72863 -32.22771,-34.97281 -72.31662,-27.34303 -113.76112,-12.36684 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc4 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 960.78632,955.17345 c 0.36675,8.62168 6.63025,17.2588 -14.72283,25.82362 -36.97841,29.98443 -34.47533,52.17993 -26.05381,73.20793 17.121,32.5286 11.01563,47.9309 -6.1789,55.1564 -53.32825,51.7257 -41.18154,62.3383 -55.40695,89.5104"/>
+          <path class="tpath" fill="none" stroke="{{ $tc4 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 894.70057,1172.2426 c 49.83904,-7.0662 89.96306,-26.773 101.0829,-84.2184 5.87923,-33.2617 -13.37672,-52.2476 -39.479,-67.345"/>
+          <path class="tpath" fill="none" stroke="{{ $tc4 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 1075.2267,1037.3699 c -65.132,6.5321 -86.08379,23.2468 -77.70104,43.7622 -0.17522,54.1233 16.98974,41.2802 29.15674,58.6973"/>
+          <path class="tpath" fill="none" stroke="{{ $tc4 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 967.10509,1175.8804 c 9.24292,-12.0448 6.148,-24.1219 1.81892,-36.2022"/>
+          <path class="tpath" fill="none" stroke="{{ $tc4 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 1020.9572,1021.7105 c -22.73748,20.9083 -25.03313,31.6625 -25.10828,41.3137"/>
+          <path class="tpath" fill="none" stroke="{{ $tc4 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 1095.9704,1016.7345 c 15.9666,35.6213 0.074,64.8017 3.2113,90.5259 2.9741,35.8594 -7.6638,66.3841 -45.9152,86.087 -23.5207,13.2456 -52.0628,15.9479 -77.63328,17.9003"/>
+        </g>
+        @php $tn5=$teeth[5]??null; $ts5=$tn5?->status??'healthy'; $tc5=$sc[$ts5]??'#0d9488'; $tid5=$tn5?->id??0; @endphp
+        <g id="tpg5" data-tooth="5">
+          <path class="tpath" fill="none" stroke="{{ $tc5 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 804.19437,1228.1981 c -97.75763,13.9462 -144.12238,64.3717 -114.52659,168.7149 31.17176,38.2934 59.5112,79.4043 112.42493,96.0693 18.74879,-0.3888 35.21213,1.496 46.45659,8.5723 16.23283,4.4402 34.8311,4.4102 54.9257,1.5523 37.84285,-20.0981 88.72667,-3.3775 110.0431,-70.1347 17.5969,-53.4141 14.5932,-100.4497 -27.81489,-135.2845 -83.81468,-70.0934 -129.88335,-64.1981 -181.50884,-69.4896 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc5 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 828.11951,1235.3031 c -12.39018,14.3732 -23.91005,27.8971 -19.28556,43.3809 -5.3953,17.9199 -5.38007,23.1854 -6.2582,29.7919 -7.66073,14.232 -8.23404,17.893 -8.50599,21.1045 0.25586,24.6894 4.40569,30.1706 8.35481,36.6417 11.158,32.6765 0.94176,39.5669 -5.76653,50.6893 -6.797,11.0167 -16.29431,5.5657 -19.81411,36.568"/>
+          <path class="tpath" fill="none" stroke="{{ $tc5 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 900.77242,1459.4377 c -47.4783,-16.4417 -50.49394,-41.655 -42.0727,-69.1245 -5.00316,-44.2022 12.99439,-69.9049 25.61382,-99.9333"/>
+          <path class="tpath" fill="none" stroke="{{ $tc5 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 927.92374,1310.2125 c -19.72463,2.3906 -39.44463,3.0111 -59.18791,12.5211"/>
+          <path class="tpath" fill="none" stroke="{{ $tc5 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 836.44851,1281.8039 c 21.52483,18.4779 28.19265,33.2001 35.08578,47.9793"/>
+          <path class="tpath" fill="none" stroke="{{ $tc5 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 805.00916,1454.9616 c 9.07613,-9.2571 25.76599,-23.0555 53.63525,-43.5217"/>
+          <path class="tpath" fill="none" stroke="{{ $tc5 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 880.07021,1492.0329 c 37.31879,-25.3875 87.15834,-4.1283 103.66007,-80.7633 2.91711,-24.4351 19.64172,-53.2755 -18.67883,-109.5321"/>
+        </g>
+        @php $tn6=$teeth[6]??null; $ts6=$tn6?->status??'healthy'; $tc6=$sc[$ts6]??'#0d9488'; $tid6=$tn6?->id??0; @endphp
+        <g id="tpg6" data-tooth="6">
+          <path class="tpath" fill="none" stroke="{{ $tc6 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 606.23393,1524.864 c 99.02409,-85.9469 172.02834,-36.3048 245.03639,13.3176 19.71548,24.4648 39.00218,48.9286 66.00522,73.4125 82.68875,79.4673 67.13536,133.3979 19.24995,178.9242 -29.84537,33.1112 -58.42875,65.5954 -73.47886,91.3573 -17.24935,17.7605 -33.10813,31.3853 -46.57827,37.9063 -63.74291,28.6227 -88.0802,-11.2972 -123.86212,-31.3103 -128.55767,-67.7582 -174.59572,-162.1446 -141.51557,-282.0615 3.64422,-46.2322 25.38846,-69.0667 55.14326,-81.5461 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc6 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 621.45397,1629.1295 c -20.79932,-96.421 29.39171,-85.7501 56.62544,-109.7112 47.31304,-11.3761 86.94517,-39.0778 166.15237,17.3364 58.99147,82.0879 41.35463,128.1713 48.80888,186.0439 3.6421,55.2561 -12.94756,88.8389 -35.48032,102.7244 -5.60747,29.8063 -4.28339,58.3302 -53.74218,84.3666 -42.09006,37.5297 -71.67207,5.2489 -102.76862,-18.5789 -46.82508,-12.5861 -54.34658,-43.3508 -53.29601,-86.0554 -95.29072,-41.4411 -42.00677,-119.7015 -26.29956,-176.1258 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc6 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 806.19637,1539.4721 c -9.68858,11.3739 -22.61998,12.9338 -25.47002,45.0038 4.37958,32.8755 -13.67688,65.6922 -31.24392,98.5101 -18.16631,17.6782 -12.26911,65.5977 -17.16315,99.9554 17.79603,16.9616 35.63597,17.1522 53.48038,15.6331 l 33.72527,29.6658"/>
+          <path class="tpath" fill="none" stroke="{{ $tc6 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 639.73058,1641.8535 c 12.07422,13.0861 21.09011,28.1996 54.85933,26.9043 19.25534,-2.4641 38.50749,-3.7069 57.72416,8.6018"/>
+          <path class="tpath" fill="none" stroke="{{ $tc6 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 852.37641,1653.6778 c -36.90062,6.3442 -91.44255,3.8098 -101.47079,23.6781"/>
+          <path class="tpath" fill="none" stroke="{{ $tc6 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 660.44798,1798.2463 c 37.57689,17.0061 53.49539,-0.8439 73.27237,-12.4843"/>
+          <path class="tpath" fill="none" stroke="{{ $tc6 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 691.29736,1850.4399 17.03778,-52.0682"/>
+        </g>
+        @php $tn7=$teeth[7]??null; $ts7=$tn7?->status??'healthy'; $tc7=$sc[$ts7]??'#0d9488'; $tid7=$tn7?->id??0; @endphp
+        <g id="tpg7" data-tooth="7">
+          <path class="tpath" fill="none" stroke="{{ $tc7 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 470.91977,2101.9765 c -20.15866,-27.6241 -17.52235,-67.8341 -3.92667,-114.0952 51.87952,-118.8306 145.08271,-144.4413 290.27997,-52.7613 45.54415,18.3844 81.64947,53.7355 105.40114,89.0086 23.36432,34.6979 45.05671,51.4003 33.50772,112.7642 -26.66532,103.3669 -72.7243,184.4521 -203.25868,168.4825 -51.8651,-6.3091 -97.6669,7.2725 -163.26542,-44.0895 -25.39325,-42.0306 -74.32561,-39.2311 -58.73806,-159.3093 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc7 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 530.47641,1948.6108 c 54.62714,-118.082 144.011,-24.2032 230.84501,54.1256 17.76941,21.3551 40.33078,34.7707 47.69542,73.3646 26.76522,68.0498 -39.60682,106.8047 -70.82421,153.3362 -31.21739,46.5315 -63.44904,69.7361 -119.85433,51.7991 -131.90443,-48.6206 -136.94434,-112.3756 -116.43272,-179.1787 -41.6553,-98.8742 -13.43995,-104.0777 -2.47029,-132.4013 10.34362,-5.7086 20.67936,-8.4043 31.04112,-21.0455 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc7 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 740.19104,2004.0896 c -13.26543,7.2095 -22.83071,7.0669 -32.41269,6.9574 -25.58952,-3.7984 -36.34293,9.8041 -39.52129,32.291 -0.33993,14.1392 3.43625,29.6624 -18.40567,36.5717 -18.8205,17.1639 -9.43146,25.0066 -7.13441,35.1927 -0.51132,15.9821 -1.00889,26.7081 -1.50063,35.2074 -0.43176,57.3696 15.28302,56.1398 25.15291,76.1225 5.94688,6.4783 13.29802,12.4927 8.39168,22.5572 l 11.24176,9.8887"/>
+          <path class="tpath" fill="none" stroke="{{ $tc7 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 653.04439,1936.2556 c 5.37479,11.7512 10.6005,23.502 19.62606,35.2627 10.02215,7.4989 14.25647,23.6304 16.79073,42.2977"/>
+          <path class="tpath" fill="none" stroke="{{ $tc7 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 552.98205,1959.9373 c 18.95757,0.8084 37.95014,1.5819 42.20913,17.012 24.01717,17.7701 48.10625,35.5935 74.50382,55.1248"/>
+          <path class="tpath" fill="none" stroke="{{ $tc7 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 517.43536,2088.0137 54.91095,7.1861 c 20.65489,8.9116 42.29138,14.904 70.41861,1.5928"/>
+          <path class="tpath" fill="none" stroke="{{ $tc7 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 625.43584,2260.1281 14.11764,-12.6392 c -3.90938,-36.1387 3.26065,-41.5588 14.18033,-36.5827"/>
+          <path class="tpath" fill="none" stroke="{{ $tc7 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 642.70223,2120.7362 29.58474,-2.7395 c 13.12189,9.051 26.25338,14.4364 39.38486,19.8215"/>
+        </g>
+        @php $tn8=$teeth[8]??null; $ts8=$tn8?->status??'healthy'; $tc8=$sc[$ts8]??'#0d9488'; $tid8=$tn8?->id??0; @endphp
+        <g id="tpg8" data-tooth="8">
+          <path class="tpath" fill="none" stroke="{{ $tc8 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 624.38349,2303.4353 c 57.48399,5.2531 109.322,18.9307 144.2348,50.3778 49.84168,25.7602 81.64091,52.7618 79.0106,82.132 15.95348,44.7675 3.53668,77.2882 -5.8074,111.1354 l -26.55401,55.5645 c -16.79618,32.3393 -51.50655,53.8661 -105.8006,63.573 -63.91684,10.5949 -127.83922,23.3026 -191.63313,-13.0604 -72.63014,-27.0928 -76.08634,-65.5285 -83.06295,-103.3869 -21.43564,-38.8354 -35.78767,-85.5981 -27.28615,-157.9358 7.53265,-33.0664 17.10599,-75.103 63.97953,-94.3164 46.87354,-19.2134 88.90275,-9.2449 152.91931,5.9168 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc8 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 453.33627,2362.4947 c -53.36593,75.7374 -16.80167,109.1032 5.24293,149.3101 -5.99893,68.1628 -4.20564,120.5674 41.9547,114.1947 68.05513,48.4926 117.68724,22.4645 171.79352,14.5343 7.76002,-12.313 8.25266,-28.2836 29.66586,-33.7253 0,0 47.65663,-102.223 53.83068,-118.1693 6.17405,-15.9463 11.15407,-45.5109 -20.92389,-77.5198 0,0 -49.63007,-51.8636 -81.51655,-66.4108 -15.1677,-6.9199 -33.02827,-4.8333 -49.27349,-8.5798 -33.30472,-7.6807 -98.51746,-28.427 -98.51746,-28.427 -31.24699,-6.9064 -50.68048,9.278 -52.2563,54.7929 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc8 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 672.51548,2568.7031 c 2.03616,-1.3498 -33.87614,-24.2287 -59.06623,-33.9576 -12.88065,-4.9747 -20.58291,-20.4508 -23.85509,-33.8654 -6.73453,-27.6088 20.00328,-62.6352 11.48881,-84.4772 -8.51448,-21.8421 -26.41316,-22.8243 -42.17595,-29.688 -10.55251,-4.595 -16.81723,-0.7629 -33.78426,-7.1307"/>
+          <path class="tpath" fill="none" stroke="{{ $tc8 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 651.85339,2391.1836 c -22.45009,6.6093 -50.96256,12.192 -52.17149,22.3987"/>
+          <path class="tpath" fill="none" stroke="{{ $tc8 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 527.60042,2509.1685 c 9.07742,-4.5257 20.76185,-9.9916 35.22589,-5.5416 14.46405,4.4501 22.01505,5.8376 26.77891,-6.9721"/>
+          <path class="tpath" fill="none" stroke="{{ $tc8 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 650.15733,2501.0387 c -21.14275,-0.867 -44.25814,11.8209 -61.93843,-12.8383"/>
+          <path class="tpath" fill="none" stroke="{{ $tc8 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 602.18046,2373.881 c 5.09575,12.6051 7.81212,24.728 -1.15682,34.4819"/>
+        </g>
+        @php $tn9=$teeth[9]??null; $ts9=$tn9?->status??'healthy'; $tc9=$sc[$ts9]??'#0d9488'; $tid9=$tn9?->id??0; @endphp
+        <g id="tpg9" data-tooth="9">
+          <path class="tpath" fill="none" stroke="{{ $tc9 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 3002.6031,2303.9073 c -57.484,5.2531 -109.322,18.9307 -144.2348,50.3778 -49.8417,25.7602 -81.6409,52.7618 -79.0106,82.132 -15.9535,44.7675 -3.5367,77.2882 5.8074,111.1354 l 26.554,55.5645 c 16.7962,32.3393 51.5066,53.8661 105.8006,63.573 63.9169,10.5949 127.8392,23.3026 191.6332,-13.0605 72.6301,-27.0927 76.0863,-65.5284 83.0629,-103.3868 21.4356,-38.8354 35.7877,-85.5981 27.2862,-157.9358 -7.5327,-33.0664 -17.106,-75.103 -63.9796,-94.3164 -46.8735,-19.2134 -88.9027,-9.2449 -152.9193,5.9168 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc9 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 3173.6503,2362.9667 c 53.366,75.7374 16.8017,109.1032 -5.2429,149.3101 5.9989,68.1628 4.2056,120.5674 -41.9547,114.1947 -68.0551,48.4926 -117.6872,22.4645 -171.7935,14.5343 -7.76,-12.313 -8.2527,-28.2836 -29.6659,-33.7253 0,0 -47.6566,-102.223 -53.8307,-118.1693 -6.174,-15.9463 -11.154,-45.5109 20.9239,-77.5198 0,0 49.6301,-51.8636 81.5166,-66.4109 15.1677,-6.9198 33.0283,-4.8332 49.2735,-8.5797 33.3047,-7.6807 98.5174,-28.427 98.5174,-28.427 31.247,-6.9064 50.6805,9.278 52.2563,54.7929 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc9 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2954.4711,2569.1751 c -2.0361,-1.3498 33.8762,-24.2288 59.0663,-33.9576 12.8806,-4.9747 20.5829,-20.4508 23.855,-33.8654 6.7346,-27.6088 -20.0032,-62.6352 -11.4888,-84.4772 8.5145,-21.8421 26.4132,-22.8243 42.176,-29.688 10.5525,-4.595 16.8172,-0.7629 33.7842,-7.1308"/>
+          <path class="tpath" fill="none" stroke="{{ $tc9 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2975.1332,2391.6556 c 22.4501,6.6093 50.9626,12.192 52.1715,22.3987"/>
+          <path class="tpath" fill="none" stroke="{{ $tc9 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 3099.3862,2509.6405 c -9.0774,-4.5257 -20.7619,-9.9916 -35.2259,-5.5416 -14.4641,4.4501 -22.0151,5.8375 -26.7789,-6.9721"/>
+          <path class="tpath" fill="none" stroke="{{ $tc9 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2976.8293,2501.5107 c 21.1427,-0.867 44.2581,11.8209 61.9384,-12.8383"/>
+          <path class="tpath" fill="none" stroke="{{ $tc9 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 3024.8061,2374.353 c -5.0957,12.6051 -7.8121,24.728 1.1569,34.4819"/>
+        </g>
+        @php $tn10=$teeth[10]??null; $ts10=$tn10?->status??'healthy'; $tc10=$sc[$ts10]??'#0d9488'; $tid10=$tn10?->id??0; @endphp
+        <g id="tpg10" data-tooth="10">
+          <path class="tpath" fill="none" stroke="{{ $tc10 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 3156.0668,2102.4485 c 20.1587,-27.6241 17.5224,-67.8341 3.9267,-114.0952 -51.8795,-118.8306 -145.0827,-144.4413 -290.28,-52.7613 -45.5441,18.3844 -81.6494,53.7355 -105.4011,89.0086 -23.3643,34.6979 -45.0567,51.4003 -33.5077,112.7642 26.6653,103.3668 72.7243,184.4521 203.2587,168.4825 51.865,-6.3091 97.6669,7.2725 163.2654,-44.0895 25.3932,-42.0306 74.3256,-39.2311 58.738,-159.3093 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc10 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 3096.5102,1949.0828 c -54.6271,-118.082 -144.011,-24.2032 -230.845,54.1256 -17.7694,21.3551 -40.3308,34.7707 -47.6954,73.3646 -26.7653,68.0498 39.6068,106.8047 70.8242,153.3362 31.2174,46.5315 63.449,69.7361 119.8543,51.7991 131.9044,-48.6206 136.9443,-112.3756 116.4327,-179.1787 41.6553,-98.8742 13.44,-104.0777 2.4703,-132.4013 -10.3436,-5.7086 -20.6793,-8.4043 -31.0411,-21.0455 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc10 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2886.7956,2004.5616 c 13.2654,7.2095 22.8307,7.0668 32.4127,6.9574 25.5895,-3.7984 36.3429,9.8041 39.5212,32.291 0.34,14.1392 -3.4362,29.6624 18.4057,36.5717 18.8205,17.1639 9.4315,25.0066 7.1344,35.1927 0.5113,15.9821 1.0089,26.7081 1.5007,35.2074 0.4317,57.3695 -15.2831,56.1398 -25.153,76.1225 -5.9468,6.4783 -13.298,12.4927 -8.3916,22.5572 l -11.2418,9.8887"/>
+          <path class="tpath" fill="none" stroke="{{ $tc10 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2973.9422,1936.7276 c -5.3748,11.7512 -10.6005,23.502 -19.626,35.2627 -10.0222,7.4989 -14.2565,23.6304 -16.7908,42.2976"/>
+          <path class="tpath" fill="none" stroke="{{ $tc10 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 3074.0046,1960.4093 c -18.9576,0.8084 -37.9502,1.5819 -42.2092,17.012 -24.0171,17.7701 -48.1062,35.5935 -74.5038,55.1248"/>
+          <path class="tpath" fill="none" stroke="{{ $tc10 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 3109.5512,2088.4857 -54.9109,7.1861 c -20.6549,8.9116 -42.2914,14.904 -70.4186,1.5928"/>
+          <path class="tpath" fill="none" stroke="{{ $tc10 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 3001.5508,2260.6 -14.1177,-12.6391 c 3.9094,-36.1387 -3.2606,-41.5588 -14.1803,-36.5827"/>
+          <path class="tpath" fill="none" stroke="{{ $tc10 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2984.2844,2121.2082 -29.5848,-2.7395 c -13.1219,9.051 -26.2533,14.4364 -39.3848,19.8215"/>
+        </g>
+        @php $tn11=$teeth[11]??null; $ts11=$tn11?->status??'healthy'; $tc11=$sc[$ts11]??'#0d9488'; $tid11=$tn11?->id??0; @endphp
+        <g id="tpg11" data-tooth="11">
+          <path class="tpath" fill="none" stroke="{{ $tc11 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 3020.7527,1525.336 c -99.0241,-85.9469 -172.0284,-36.3048 -245.0364,13.3176 -19.7155,24.4648 -39.0022,48.9286 -66.0052,73.4125 -82.6888,79.4673 -67.1354,133.3979 -19.25,178.9242 29.8454,33.1112 58.4288,65.5954 73.4789,91.3573 17.2493,17.7604 33.1081,31.3853 46.5782,37.9063 63.743,28.6227 88.0802,-11.2972 123.8622,-31.3103 128.5576,-67.7582 174.5957,-162.1446 141.5155,-282.0616 -3.6442,-46.2321 -25.3884,-69.0666 -55.1432,-81.546 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc11 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 3005.5326,1629.6015 c 20.7994,-96.421 -29.3917,-85.7501 -56.6254,-109.7112 -47.313,-11.3761 -86.9452,-39.0778 -166.1524,17.3364 -58.9914,82.0879 -41.3546,128.1713 -48.8089,186.0439 -3.6421,55.2561 12.9476,88.8389 35.4804,102.7244 5.6074,29.8063 4.2833,58.3302 53.7421,84.3666 42.0901,37.5297 71.6721,5.2489 102.7687,-18.5789 46.825,-12.5861 54.3465,-43.3508 53.296,-86.0554 95.2907,-41.4411 42.0067,-119.7015 26.2995,-176.1258 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc11 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2820.7902,1539.944 c 9.6886,11.374 22.62,12.9339 25.4701,45.0039 -4.3796,32.8755 13.6768,65.6922 31.2439,98.5101 18.1663,17.6782 12.2691,65.5977 17.1631,99.9554 -17.796,16.9615 -35.6359,17.1522 -53.4804,15.6331 l -33.7252,29.6658"/>
+          <path class="tpath" fill="none" stroke="{{ $tc11 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2987.256,1642.3255 c -12.0742,13.0861 -21.0901,28.1996 -54.8593,26.9043 -19.2553,-2.4641 -38.5075,-3.7069 -57.7242,8.6018"/>
+          <path class="tpath" fill="none" stroke="{{ $tc11 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2774.6102,1654.1498 c 36.9006,6.3441 91.4425,3.8098 101.4708,23.6781"/>
+          <path class="tpath" fill="none" stroke="{{ $tc11 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2966.5386,1798.7183 c -37.5769,17.0061 -53.4954,-0.8439 -73.2723,-12.4843"/>
+          <path class="tpath" fill="none" stroke="{{ $tc11 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2935.6892,1850.9119 -17.0377,-52.0682"/>
+        </g>
+        @php $tn12=$teeth[12]??null; $ts12=$tn12?->status??'healthy'; $tc12=$sc[$ts12]??'#0d9488'; $tid12=$tn12?->id??0; @endphp
+        <g id="tpg12" data-tooth="12">
+          <path class="tpath" fill="none" stroke="{{ $tc12 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2822.7922,1228.6701 c 97.7577,13.9462 144.1224,64.3717 114.5266,168.7149 -31.1717,38.2934 -59.5112,79.4043 -112.4249,96.0693 -18.7488,-0.3888 -35.2121,1.4959 -46.4566,8.5723 -16.2328,4.4402 -34.8311,4.4102 -54.9257,1.5523 -37.8428,-20.0981 -88.7267,-3.3775 -110.0431,-70.1347 -17.5969,-53.4141 -14.5932,-100.4497 27.8149,-135.2846 83.8147,-70.0934 129.8833,-64.198 181.5088,-69.4895 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc12 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2798.8671,1235.775 c 12.3902,14.3733 23.91,27.8972 19.2856,43.381 5.3953,17.9199 5.38,23.1854 6.2582,29.7919 7.6607,14.232 8.234,17.893 8.5059,21.1045 -0.2558,24.6894 -4.4056,30.1706 -8.3548,36.6417 -11.158,32.6765 -0.9417,39.5669 5.7666,50.6893 6.797,11.0167 16.2943,5.5656 19.8141,36.568"/>
+          <path class="tpath" fill="none" stroke="{{ $tc12 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2726.2142,1459.9097 c 47.4783,-16.4417 50.4939,-41.655 42.0727,-69.1245 5.0031,-44.2022 -12.9944,-69.9049 -25.6138,-99.9333"/>
+          <path class="tpath" fill="none" stroke="{{ $tc12 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2699.0629,1310.6845 c 19.7246,2.3905 39.4446,3.0111 59.1879,12.5211"/>
+          <path class="tpath" fill="none" stroke="{{ $tc12 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2790.5381,1282.2759 c -21.5248,18.4778 -28.1927,33.2001 -35.0858,47.9793"/>
+          <path class="tpath" fill="none" stroke="{{ $tc12 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2821.9774,1455.4336 c -9.0761,-9.2572 -25.7659,-23.0555 -53.6352,-43.5217"/>
+          <path class="tpath" fill="none" stroke="{{ $tc12 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2746.9164,1492.5049 c -37.3188,-25.3875 -87.1583,-4.1284 -103.6601,-80.7633 -2.9171,-24.4351 -19.6417,-53.2755 18.6789,-109.5321"/>
+        </g>
+        @php $tn13=$teeth[13]??null; $ts13=$tn13?->status??'healthy'; $tc13=$sc[$ts13]??'#0d9488'; $tid13=$tn13?->id??0; @endphp
+        <g id="tpg13" data-tooth="13">
+          <path class="tpath" fill="none" stroke="{{ $tc13 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2743.7862,955.44233 c 81.5943,28.41482 86.9583,67.62067 87.3508,107.53027 4.1507,175.5425 -144.8627,172.5709 -173.7221,159.0761 -45.4033,5.6227 -76.9366,0.3992 -101.7508,-10.0785 -46.3335,-3.5547 -68.651,-31.2515 -76.0559,-73.9391 -6.7825,-22.9142 -9.0947,-48.0782 2.3763,-80.1789 8.3857,-17.9293 2.6833,-35.1172 54.1657,-55.3144 54.2861,-5.98354 71.4704,-19.75253 93.8749,-34.72864 32.2277,-34.97281 72.3166,-27.34302 113.7611,-12.36683 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc13 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2666.2003,955.64545 c -0.3668,8.62167 -6.6303,17.25879 14.7228,25.82361 36.9784,29.98444 34.4753,52.17994 26.0538,73.20794 -17.121,32.5286 -11.0156,47.9309 6.1789,55.1564 53.3283,51.7257 41.1816,62.3382 55.407,89.5104"/>
+          <path class="tpath" fill="none" stroke="{{ $tc13 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2732.286,1172.7146 c -49.839,-7.0662 -89.963,-26.773 -101.0829,-84.2185 -5.8792,-33.2616 13.3768,-52.2475 39.479,-67.3449"/>
+          <path class="tpath" fill="none" stroke="{{ $tc13 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2551.7599,1037.8419 c 65.132,6.5321 86.0838,23.2468 77.701,43.7622 0.1753,54.1233 -16.9897,41.2801 -29.1567,58.6973"/>
+          <path class="tpath" fill="none" stroke="{{ $tc13 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2659.8815,1176.3524 c -9.2429,-12.0448 -6.148,-24.1219 -1.8189,-36.2023"/>
+          <path class="tpath" fill="none" stroke="{{ $tc13 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2606.0294,1022.1825 c 22.7375,20.9083 25.0331,31.6625 25.1083,41.3137"/>
+          <path class="tpath" fill="none" stroke="{{ $tc13 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2531.0162,1017.2065 c -15.9666,35.6213 -0.074,64.8017 -3.2113,90.5259 -2.9741,35.8594 7.6638,66.3841 45.9152,86.087 23.5207,13.2456 52.0628,15.9479 77.6333,17.9003"/>
+        </g>
+        @php $tn14=$teeth[14]??null; $ts14=$tn14?->status??'healthy'; $tc14=$sc[$ts14]??'#0d9488'; $tid14=$tn14?->id??0; @endphp
+        <g id="tpg14" data-tooth="14">
+          <path class="tpath" fill="none" stroke="{{ $tc14 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2597.2553,963.58459 c 54.0455,-18.03069 79.3547,-51.01802 85.0985,-94.18863 6.6773,-42.21018 -0.6959,-83.37978 -26.1847,-123.20773 -22.2889,-62.02568 -44.4064,-58.59101 -66.5438,-62.75704 -19.7474,2.49038 -37.6952,1.35802 -55.1745,-0.71762 -52.834,-2.34103 -72.5151,21.61881 -85.2475,37.29227 -44.5828,59.69905 -39.6605,94.48329 -50.503,137.20165 -5.5775,47.16842 -3.1173,87.49959 20.9762,109.42822 73.3066,54.82809 85.7676,27.96255 116.4466,25.5573 57.13,-24.06183 42.4358,-19.73664 61.1322,-28.60842 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc14 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2630.7156,902.28989 c -2.5682,-58.38743 -7.4764,-113.78079 -34.8505,-140.42649 -27.0868,-28.37645 -61.9381,-48.94777 -109.6313,-56.60973"/>
+          <path class="tpath" fill="none" stroke="{{ $tc14 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2463.9555,757.03631 c -32.3257,125.75081 -46.34,155.42872 38.134,77.48664"/>
+          <path class="tpath" fill="none" stroke="{{ $tc14 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2539.2735,878.39127 c -71.1713,86.13192 -23.9636,73.39337 52.6808,36.0691"/>
+        </g>
+        @php $tn15=$teeth[15]??null; $ts15=$tn15?->status??'healthy'; $tc15=$sc[$ts15]??'#0d9488'; $tid15=$tn15?->id??0; @endphp
+        <g id="tpg15" data-tooth="15">
+          <path class="tpath" fill="none" stroke="{{ $tc15 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2429.0847,608.85123 c -133.3836,-87.56135 -106.057,-62.00345 -163.1449,-81.46972 -19.899,-7.11186 -36.4171,-8.1753 -44.8139,5.28976 l -30.9531,31.11562 c -21.0352,26.43575 -19.6353,32.04799 -22.3054,41.43785 -9.909,81.74291 1.5425,80.7169 3.7507,115.50782 15.2528,29.61246 33.6734,56.04062 64.8377,69.65808 19.2324,13.56756 45.8659,12.2355 74.158,7.5645 l 46.5222,-11.32873 c 18.2406,2.74298 33.9563,-9.42237 49.948,-19.95842 33.7488,-23.69056 42.4715,-57.31568 54.0754,-89.79705 2.3344,-21.00907 -3.643,-39.61978 -17.388,-55.98915 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc15 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2391.5419,757.22589 c 17.9032,-27.84058 46.563,-50.338 11.7959,-104.34159 -31.8919,-24.8855 -56.8499,-32.56684 -84.6066,-47.19245 -23.8932,-12.02856 -47.6043,-23.69532 -64.7136,-22.24445 -71.2494,-6.84002 -41.9157,10.18158 -61.1661,15.67743"/>
+          <path class="tpath" fill="none" stroke="{{ $tc15 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2242.075,631.75469 c -6.099,31.90391 -11.7816,64.63532 -29.1161,74.21441"/>
+          <path class="tpath" fill="none" stroke="{{ $tc15 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2282.9397,764.40678 c -2.5232,-27.17019 37.0901,-38.6649 69.6897,-52.76883"/>
+        </g>
+        @php $tn16=$teeth[16]??null; $ts16=$tn16?->status??'healthy'; $tc16=$sc[$ts16]??'#0d9488'; $tid16=$tn16?->id??0; @endphp
+        <g id="tpg16" data-tooth="16">
+          <path class="tpath" fill="none" stroke="{{ $tc16 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2168.5985,555.22265 c -0.6515,6.0073 -35.7326,67.86537 -44.5769,95.80669 -11.959,30.16587 -31.0024,57.43634 -81.7089,71.76588 -41.4041,-5.08431 -83.3971,-6.17156 -118.2498,-55.7251 l -85.6853,-129.94853 -15.6255,-41.33855 c -11.2826,-29.84887 13.1515,-57.29546 36.0262,-69.06007 l 62.0259,-16.54175 c 36.2266,-2.32122 60.2722,-12.93929 131.0566,8.27762 l 66.4174,14.48134 c 24.1618,10.65479 56.427,6.48435 57.0544,60.19566 -1.2698,20.5305 6.7716,39.48407 -6.7341,62.08681 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc16 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2105.0133,634.69973 15.1854,-126.76432 c -8.2366,0.0216 9.2676,-25.59095 -21.6487,-37.01242 -112.8983,-43.96557 -178.1438,-11.7383 -196.5578,-2.07163 -18.414,9.66668 -34.4001,36.10164 -30.8674,63.87414 3.5328,27.7725 11.2639,34.44183 16.5057,48.23281"/>
+        </g>
+        @php $tn17=$teeth[17]??null; $ts17=$tn17?->status??'healthy'; $tc17=$sc[$ts17]??'#0d9488'; $tid17=$tn17?->id??0; @endphp
+        <g id="tpg17" data-tooth="17">
+          <path class="tpath" fill="none" stroke="{{ $tc17 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 3152.7941,3078.5168 c 5.3481,-37.4434 29.2813,-41.0252 10.022,-123.3026 -10.0329,-58.7031 -38.8078,-107.1908 -103.8045,-135.9356 -39.344,-5.601 -75.2033,-33.6533 -120.6892,0.316 -13.2576,11.5873 -23.1348,17.7637 -31.8378,22.4972 -18.0806,18.8234 -53.2247,19.9358 -70.4502,91.5641 0.015,27.2957 6.6718,37.8615 -5.7816,96.5672 -3.9477,22.6219 -15.4342,36.8072 -2.3809,78.4547 14.0676,19.2617 12.7967,39.6594 56.1833,56.7497 11.9069,10.9977 106.5142,21.3761 137.1226,20.3307 30.6085,-1.0453 29.0854,9.4074 75.7716,-34.6812 18.5154,-23.3739 35.3315,-32.8573 55.8447,-72.5602 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc17 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2935.8129,2848.9116 c 34.9918,-52.1599 74.0456,-28.9701 113.8131,7.4607 22.6049,27.1505 29.5907,55.7621 26.9474,85.2746 -0.9732,17.7247 -8.6827,29.7059 -25.7739,33.6882 11.2794,6.3051 15.7872,18.0565 15.6052,33.58 l -15.2825,89.6955 c -14.5702,36.9611 -26.142,36.7653 -38.6666,48.3772 -6.6838,3.3823 -13.452,6.6808 -22.3934,7.8173 -12.3673,-4.1705 -24.7303,-6.7262 -37.1794,-42.1442 10.5264,-3.3744 -33.1939,-20.1909 -1.002,-53.4458 10.3687,-11.34 -24.6887,-48.0946 -4.5157,-78.4367 10.324,-33.3846 20.1559,-62.2322 28.2518,-75.0743 -21.7951,-3.5448 -15.2899,-23.3597 -22.5062,-35.286"/>
+          <path class="tpath" fill="none" stroke="{{ $tc17 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 3001.4608,2898.7399 -25.8439,6.9642"/>
+          <path class="tpath" fill="none" stroke="{{ $tc17 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2899.9334,2974.006 c 13.6959,6.1675 25.5499,16.6639 45.7098,7.6389"/>
+          <path class="tpath" fill="none" stroke="{{ $tc17 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2983.8427,3084.1315 c -16.1056,-2.4766 -28.1591,-10.6577 -32.8353,-29.2245"/>
+          <path class="tpath" fill="none" stroke="{{ $tc17 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 3013.7284,2974.5701 c -21.3867,-4.1252 -44.9347,-16.8008 -62.0801,-4.1478"/>
+          <path class="tpath" fill="none" stroke="{{ $tc17 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2946.0675,3143.7134 c -13.6209,-0.4232 -26.4939,0.7307 -42.2525,-4.1998 -22.5211,-25.1572 -30.5989,-25.1915 -44.9222,-36.0894 -2.6946,-0.8148 -31.0787,-30.3741 -10.5412,-74.9727 11.3406,-22.8215 14.0922,-30.7058 9.3586,-47.4384 11.1345,-39.018 5.0973,-47.8021 7.5713,-71.5718"/>
+        </g>
+        @php $tn18=$teeth[18]??null; $ts18=$tn18?->status??'healthy'; $tc18=$sc[$ts18]??'#0d9488'; $tid18=$tn18?->id??0; @endphp
+        <g id="tpg18" data-tooth="18">
+          <path class="tpath" fill="none" stroke="{{ $tc18 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 3032.3982,3190.9013 c 32.1411,14.94 64.9486,24.433 94.9763,56.6481 24.8643,19.5811 43.3644,54.8361 47.7408,124.8754 2.0873,49.2471 14.0225,97.2369 -18.5705,150.9112 -27.9832,23.5896 -10.8406,31.6184 -86.8813,71.7795 -39.1729,16.4108 -67.2934,52.594 -127.5045,31.3684 -29.1273,-8.2492 -38.9645,-4.993 -88.8605,-25.6296 -21.1402,-4.8161 -38.6515,-16.9376 -48.3931,-44.701 -10.4919,-17.9633 -19.259,-42.9033 -25.2075,-79.2446 2.0426,-31.396 6.7745,-44.3127 11.0488,-60.374 6.835,-42.2141 4.2715,-59.7999 -0.1895,-72.4135 -0.4621,-21.2633 3.7756,-42.5388 17.0743,-63.8381 6.9846,-23.0182 11.5829,-44.7854 52.4032,-69.965 37.1692,-27.9418 61.2924,-48.956 172.3635,-19.4168 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc18 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2961.9098,3597.1217 c -14.5274,-6.9312 -14.6884,-19.0357 -58.6612,-15.3637 -10.6358,-1.3773 -21.2685,-1.5802 -31.9393,-16.2958 l -23.3141,-14.5941 -19.8727,-17.1895 c -15.5059,-16.8558 -19.1018,-35.0665 -13.9352,-54.274 2.724,-21.309 7.0793,-47.0028 3.3151,-50.8709 -2.0472,-13.2116 2.0305,-34.6345 6.7476,-56.9144 -2.1644,-28.7559 -22.5625,-24.7504 4.0349,-105.1834 1.7323,-17.1466 10.7965,-25.9155 27.5185,-25.9342 13.6094,-2.6793 17.2667,-8.9504 34.4239,-22.504 12.1935,-7.2158 18.4998,-14.4163 45.6331,-21.6712 20.6966,2.6219 41.3683,-4.259 62.1026,12.7685 l 36.2925,32.6637 c 29.2615,24.254 32.3952,37.7016 34.6158,50.7716 8.1316,19.519 4.9553,39.0676 1.8776,58.616 -0.6887,16.6605 -6.424,30.4548 -23.1765,37.9918 8.0463,9.5862 17.0756,14.189 20.8092,45.6353 8.5892,54.6075 -4.6169,68.605 -13.556,90.5531 -17.4624,25.3767 -34.9412,44.4883 -52.4145,65.6547"/>
+          <path class="tpath" fill="none" stroke="{{ $tc18 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2913.5956,3253.2815 c 15.7195,10.7174 28.0445,27.4113 34.6249,54.2199 -2.8279,20.9661 -7.6838,37.9025 -12.7889,54.344 -4.2983,22.6759 -16.1501,21.4013 -10.1439,76.751 10.77,10.4492 13.4333,18.2198 10.408,24.1107 -19.4725,41.4901 -12.684,78.1344 18.3923,110.2971"/>
+          <path class="tpath" fill="none" stroke="{{ $tc18 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2884.1297,3523.1872 c 9.5711,-20.7871 20.473,-40.9132 48.1381,-52.7125 3.8175,-11.7678 16.8046,-16.4422 41.3475,-12.1772"/>
+          <path class="tpath" fill="none" stroke="{{ $tc18 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 3013.0785,3384.9181 c -39.1424,-3.2572 -73.5277,-3.7561 -85.3219,8.8441"/>
+          <path class="tpath" fill="none" stroke="{{ $tc18 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2829.5194,3408.6746 c 30.6224,-8.5033 51.7731,-25.2506 99.0879,-19.225"/>
+          <path class="tpath" fill="none" stroke="{{ $tc18 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2840.627,3370.7143 42.2999,22.3031"/>
+          <path class="tpath" fill="none" stroke="{{ $tc18 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 3009.382,3290.0998 c -28.0848,5.5333 -47.7176,11.0445 -62.0259,16.5418"/>
+          <path class="tpath" fill="none" stroke="{{ $tc18 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2972.18,3239.335 c -11.1446,21.8683 -25.0939,43.744 -23.1043,65.5779"/>
+        </g>
+        @php $tn19=$teeth[19]??null; $ts19=$tn19?->status??'healthy'; $tc19=$sc[$ts19]??'#0d9488'; $tid19=$tn19?->id??0; @endphp
+        <g id="tpg19" data-tooth="19">
+          <path class="tpath" fill="none" stroke="{{ $tc19 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2826.6286,3621.6139 c -20.1324,-6.2601 -42.2609,5.8837 -64.6031,19.9968 l -30.082,34.5616 c -21.1948,20.1705 -30.0812,40.3088 -28.2902,60.4191 1.9262,35.0526 -7.4049,70.1346 -30.759,105.2533 -14.9394,43.0933 -24.6931,84.7316 1.1667,116.3767 15.7925,28.7293 34.9863,56.0878 73.4742,75.6699 40.243,16.5996 75.7223,39.1857 124.2572,45.3645 31.724,2.4545 57.4875,12.9 108.5932,-10.6291 l 69.7055,-46.7344 c 11.7358,-8.5918 22.9145,-13.4018 41.2054,-66.4874 5.9841,-49.3235 28.9565,-96.5687 1.3314,-150.004 l -44.2317,-101.6087 c -20.9137,-26.1166 -34.7968,-54.8105 -79.4996,-72.2059 -26.0548,-8.4072 -43.5462,-21.5145 -93.1483,-16.9976 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc19 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2756.0656,3670.0747 c -10.6318,22.1543 -27.187,44.3242 -27.4124,66.4513 -5.3711,44.6558 -19.8297,75.7573 -34.2028,106.9864 -8.4017,21.7718 -21.4326,37.9158 -10.1258,83.6475 8.0248,28.683 15.4958,57.6262 57.0814,70.5405 l 71.635,31.7091 c 20.4078,9.6026 48.1104,8.2006 77.5972,4.1072 28.7087,-10.3178 57.4456,-9.8725 86.0757,-50.2255 6.1615,-12.0555 9.7793,-29.1651 6.7408,-59.5006"/>
+          <path class="tpath" fill="none" stroke="{{ $tc19 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2997.1891,3901.3407 c 13.8122,0.1574 24.5377,-4.5079 22.337,-29.3689 -3.2018,-47.2127 3.2818,-95.4195 -21.0575,-140.4626 0.043,-26.2238 1.6722,-53.5116 -18.2772,-66.3317 -26.4072,-19.2638 -39.0454,-52.369 -94.9378,-41.9929 -27.5938,6.1214 -45.9368,6.4274 -55.17,1.0065"/>
+          <path class="tpath" fill="none" stroke="{{ $tc19 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2831.9409,3675.0484 c 10.2552,25.8941 16.5535,50.2878 41.5936,81.788 -10.1864,33.711 -24.7565,45.7982 -39.5061,57.0002 -3.6766,9.5172 -9.6289,4.8623 -6.7521,55.1902 -3.6083,48.2866 -35.0766,64.9008 -53.1953,96.6914"/>
+          <path class="tpath" fill="none" stroke="{{ $tc19 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2937.6772,3890.2896 c -36.2533,-17.6619 -72.5216,-41.0632 -108.7061,-32.4741"/>
+          <path class="tpath" fill="none" stroke="{{ $tc19 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2738.2759,3789.9492 c 26.6166,41.0548 58.9577,38.3016 89.779,47.1789"/>
+          <path class="tpath" fill="none" stroke="{{ $tc19 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2791.5773,3733.775 c 21.4002,24.1177 42.6239,48.2888 41.5868,79.2017"/>
+          <path class="tpath" fill="none" stroke="{{ $tc19 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2979.4603,3715.1796 c -24.5979,29.0842 -58.277,45.5248 -105.9236,42.5188"/>
+        </g>
+        @php $tn20=$teeth[20]??null; $ts20=$tn20?->status??'healthy'; $tc20=$sc[$ts20]??'#0d9488'; $tid20=$tn20?->id??0; @endphp
+        <g id="tpg20" data-tooth="20">
+          <path class="tpath" fill="none" stroke="{{ $tc20 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2673.4811,4065.9819 c -84.6296,42.063 -83.3965,64.6805 -85.9539,96.7771 6.4067,38.4417 4.6963,52.7427 4.4977,71.5401 -1.1438,39.517 23.4696,49.9038 38.978,70.5879 49.7329,49.7603 76.2274,33.6785 111.3171,41.9501 32.2683,-4.9696 51.9309,-9.9061 70.6511,-14.8402 52.6222,-12.7728 48.0235,-32.5462 67.9745,-49.316 25.5794,-34.3251 27.8281,-78.1855 14.3189,-128.4863 -11.0784,-29.9237 -33.5609,-52.3026 -57.0905,-73.9887 l -57.8351,-29.159 c -44.4,-18.3588 -95.2667,6.8433 -106.8578,14.935 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc20 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2752.7844,4063.188 c 18.4302,3.7066 40.7514,6.4503 48.3998,47.2873 -0.1565,17.7603 5.5443,31.5936 12.1863,44.7958 8.0215,42.5836 -12.9335,70.7736 -31.6347,100.0832 -14.5199,24.5049 -32.4894,26.9555 -49.914,32.8894 -19.0033,10.044 -33.2604,3.31 -43.153,-18.8526 -6.0507,-12.649 -7.3022,-31.3294 -21.6397,-33.5642 -6.4761,-11.423 -7.3336,-20.9895 -6.9755,-30.1542 8.1532,-15.3074 1.5443,-36.4747 -1.0087,-56.0321 33.4589,-1.6818 41.6827,-28.467 45.5337,-59.6021 15.5678,-5.8959 30.5071,-7.9595 48.2058,-26.8505 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc20 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2712.7593,4251.2245 c -19.8462,-17.9748 -19.485,-49.4977 -19.1776,-80.9846 12.1945,-52.7994 34.3129,-78.0398 69.6535,-66.5618"/>
+          <path class="tpath" fill="none" stroke="{{ $tc20 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2674.7403,4217.7032 c 1.5583,-27.0857 9.8072,-39.223 20.57,-45.7436"/>
+          <path class="tpath" fill="none" stroke="{{ $tc20 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2724.4016,4088.2624 -2.523,24.1446"/>
+        </g>
+        @php $tn21=$teeth[21]??null; $ts21=$tn21?->status??'healthy'; $tc21=$sc[$ts21]??'#0d9488'; $tid21=$tn21?->id??0; @endphp
+        <g id="tpg21" data-tooth="21">
+          <path class="tpath" fill="none" stroke="{{ $tc21 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2688.0573,4365.0827 c 33.5598,46.2765 41.6137,79.4741 38.2107,106.7968 -10.0392,47.5392 -15.2344,98.5576 -65.2101,117.4125 -79.7548,26.5725 -96.922,4.5196 -129.3257,-5.6959 -37.0786,-18.0279 -66.236,-40.6099 -87.2469,-67.8752 -16.1582,-11.1647 -14.9508,-22.3748 -15.6052,-33.58 2.4957,-20.817 -1.9828,-34.8706 -3.5837,-51.7149 -2.4404,-32.671 11.6624,-55.4749 19.6131,-81.9482 23.5156,-19.1476 40.7452,-45.4412 79.186,-47.6213 l 66.3745,-1.8979 c 40.8861,-2.1426 68.7755,33.3254 97.5873,66.1241 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc21 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2670.8408,4374.6105 c -11.8585,16.6764 -26.5765,36.3083 -34.3608,46.6419 -4.1824,7.3794 -0.6541,12.5773 -1.6609,24.1423 4.9861,30.0185 -4.3225,28.0745 -12.8408,34.5165 -8.6923,6.7408 -17.6133,13.0274 -24.0746,24.2011 -7.4145,22.416 -17.9461,17.4321 -27.532,20.7618 l -39.6369,7.0003 c -31.4463,9.4664 -36.3912,-5.0371 -53.4639,-5.8945"/>
+          <path class="tpath" fill="none" stroke="{{ $tc21 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2486.6227,4475.9552 c -2.0667,11.4465 5.3603,24.2239 -11.1188,33.6499"/>
+          <path class="tpath" fill="none" stroke="{{ $tc21 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2572.0011,4488.6628 -73.5058,-87.7389 c -15.4457,-18.6658 -27.2614,-23.1831 -28.4121,13.8675"/>
+          <path class="tpath" fill="none" stroke="{{ $tc21 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2583.8646,4410.1832 c -7.2005,-22.1077 -27.4576,-44.1812 -62.2425,-66.2166 13.4721,4.7005 26.9088,9.5081 44.8297,0.7447 21.243,-10.412 31.365,1.564 43.9879,8.5056"/>
+        </g>
+        @php $tn22=$teeth[22]??null; $ts22=$tn22?->status??'healthy'; $tc22=$sc[$ts22]??'#0d9488'; $tid22=$tn22?->id??0; @endphp
+        <g id="tpg22" data-tooth="22">
+          <path class="tpath" fill="none" stroke="{{ $tc22 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2406.5815,4526.1649 c -57.6851,-8.1056 -108.1745,-8.3716 -118.0105,35.6539 l -29.0846,86.2834 c -20.9095,65.764 1.0445,52.4531 4.5022,73.2643 l 43.2364,50.7491 c 16.5229,16.7261 34.3263,32.5507 73.3636,33.4287 57.2353,-2.1167 115.1473,-3.0229 127.3624,-85.6786 l 4.9196,-96.5649 c -11.8691,-46.1415 -24.8607,-91.6274 -106.2891,-97.1359 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc22 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2477.474,4603.5658 c -16.9644,53.7351 -27.5867,115.3556 -79.8449,125.2095 -40.6394,18.5326 -82.192,48.3802 -116.4128,-12.6263"/>
+          <path class="tpath" fill="none" stroke="{{ $tc22 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2300.1051,4686.7891 c 20.6596,12.2825 42.1377,26.6968 44.8071,-7.876 3.7465,-36.0346 -11.8297,-52.6452 -18.3088,-78.4006"/>
+          <path class="tpath" fill="none" stroke="{{ $tc22 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2441.265,4602.7985 c -4.8328,-21.5008 -20.658,-37.8933 -55.2919,-45.545"/>
+          <path class="tpath" fill="none" stroke="{{ $tc22 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2423.288,4651.1216 c -11.7523,11.2108 -23.5579,2.0862 -35.4305,-32.6659 -6.1749,-26.4234 -17.1202,-33.5502 -27.6967,-42.1691"/>
+        </g>
+        @php $tn23=$teeth[23]??null; $ts23=$tn23?->status??'healthy'; $tc23=$sc[$ts23]??'#0d9488'; $tid23=$tn23?->id??0; @endphp
+        <g id="tpg23" data-tooth="23">
+          <path class="tpath" fill="none" stroke="{{ $tc23 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2188.894,4685.3561 c 22.0731,32.1262 83.2827,64.15 14.0459,96.5153"/>
+          <path class="tpath" fill="none" stroke="{{ $tc23 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2137.2581,4719.1121 -15.3231,74.1783 c -9.964,35.7078 -20.06,21.0051 -30.1723,0.079"/>
+          <path class="tpath" fill="none" stroke="{{ $tc23 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2267.5045,4747.2195 c -1.5757,26.1844 0.8647,54.9358 -31.7362,61.2902 -27.7226,9.5553 -62.5015,19.1292 -73.2011,28.64 -45.888,25.3423 -50.1679,12.0749 -68.9337,12.2494"/>
+          <path class="tpath" fill="none" stroke="{{ $tc23 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2099.1827,4664.0392 c 16.3825,-45.7515 56.388,-46.2753 83.5573,-24.3568 l 38.9216,49.0362 45.8046,43.8457 c 6.6605,20.5222 24.5782,19.2569 3.692,93.0941 -12.5601,39.939 -37.8212,57.7856 -68.7938,65.6976 -39.7214,11.4072 -73.7303,4.0746 -104.3483,-14.382 -20.8717,-21.5036 -53.9095,-31.6507 -45.0396,-80.9169 8.853,-22.1556 9.2739,-27.336 28.2654,-69.9018 5.9805,-20.6137 11.9884,-30.7747 17.9408,-62.1161 z"/>
+        </g>
+        @php $tn24=$teeth[24]??null; $ts24=$tn24?->status??'healthy'; $tc24=$sc[$ts24]??'#0d9488'; $tid24=$tn24?->id??0; @endphp
+        <g id="tpg24" data-tooth="24">
+          <path class="tpath" fill="none" stroke="{{ $tc24 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 1999.3636,4733.2662 c 12.9913,28.541 22.1962,60.1273 45.8994,80.0526 10.6345,10.6555 19.7891,24.2905 7.9685,80.1518 -12.269,23.2736 -33.2751,36.8902 -66.282,37.2426 -26.6221,-5.0044 -49.5393,-12.1387 -91.4016,-8.3814 -20.1557,-4.8702 -38.5267,1.6612 -63.0121,-30.8697 -8.0863,-15.3633 -20.6812,-25.1479 -0.1986,-75.8618 l 62.7119,-83.7851 c 17.0145,-12.6719 18.8755,-32.1839 58.5302,-34.6361 31.0087,0.9444 36.8234,19.6231 45.7843,36.0871 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc24 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 2040.2802,4885.7458 c -17.1138,2.9 -33.3182,8.4556 -52.5792,2.7239 l -31.0277,2.6675 c -21.8379,3.2325 -40.6129,0.2991 -60.3468,-0.7041 -29.9159,-1.5657 -60.736,-2.703 -52.6447,-22.2761"/>
+        </g>
+        @php $tn25=$teeth[25]??null; $ts25=$tn25?->status??'healthy'; $tc25=$sc[$ts25]??'#0d9488'; $tid25=$tn25?->id??0; @endphp
+        <g id="tpg25" data-tooth="25">
+          <path class="tpath" fill="none" stroke="{{ $tc25 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 1627.623,4732.7942 c -12.9913,28.541 -22.1962,60.1273 -45.8994,80.0526 -10.6345,10.6556 -19.7891,24.2905 -7.9685,80.1518 12.269,23.2736 33.2751,36.8902 66.282,37.2426 26.6221,-5.0044 49.5393,-12.1387 91.4016,-8.3814 20.1557,-4.8702 38.5267,1.6612 63.0121,-30.8696 8.0863,-15.3634 20.6812,-25.148 0.1986,-75.8619 l -62.7119,-83.7851 c -17.0145,-12.6719 -18.8755,-32.1839 -58.5302,-34.6361 -31.0087,0.9444 -36.8234,19.6231 -45.7843,36.0871 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc25 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 1586.7064,4885.2738 c 17.1138,2.9 33.3182,8.4556 52.5793,2.7239 l 31.0276,2.6675 c 21.8379,3.2325 40.6129,0.2991 60.3468,-0.7041 29.9159,-1.5657 60.736,-2.703 52.6447,-22.2761"/>
+        </g>
+        @php $tn26=$teeth[26]??null; $ts26=$tn26?->status??'healthy'; $tc26=$sc[$ts26]??'#0d9488'; $tid26=$tn26?->id??0; @endphp
+        <g id="tpg26" data-tooth="26">
+          <path class="tpath" fill="none" stroke="{{ $tc26 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 1438.0926,4684.8841 c -22.0731,32.1262 -83.2827,64.15 -14.0459,96.5153"/>
+          <path class="tpath" fill="none" stroke="{{ $tc26 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 1489.7285,4718.6401 15.3231,74.1783 c 9.964,35.7078 20.06,21.0051 30.1723,0.079"/>
+          <path class="tpath" fill="none" stroke="{{ $tc26 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 1359.4821,4746.7475 c 1.5757,26.1844 -0.8647,54.9358 31.7362,61.2902 27.7226,9.5553 62.5015,19.1292 73.2011,28.64 45.888,25.3423 50.1679,12.0749 68.9337,12.2495"/>
+          <path class="tpath" fill="none" stroke="{{ $tc26 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 1527.8039,4663.5672 c -16.3825,-45.7515 -56.388,-46.2753 -83.5572,-24.3568 l -38.9217,49.0362 -45.8046,43.8457 c -6.6605,20.5222 -24.5782,19.2569 -3.692,93.0941 12.5601,39.939 37.8212,57.7856 68.7938,65.6976 39.7214,11.4072 73.7303,4.0746 104.3483,-14.382 20.8717,-21.5036 53.9095,-31.6507 45.0396,-80.9169 -8.853,-22.1555 -9.2739,-27.336 -28.2653,-69.9018 -5.9806,-20.6137 -11.9885,-30.7747 -17.9409,-62.1161 z"/>
+        </g>
+        @php $tn27=$teeth[27]??null; $ts27=$tn27?->status??'healthy'; $tc27=$sc[$ts27]??'#0d9488'; $tid27=$tn27?->id??0; @endphp
+        <g id="tpg27" data-tooth="27">
+          <path class="tpath" fill="none" stroke="{{ $tc27 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 1220.4051,4525.693 c 57.6851,-8.1057 108.1745,-8.3717 118.0106,35.6539 l 29.0845,86.2833 c 20.9095,65.764 -1.0445,52.4531 -4.5022,73.2643 l -43.2364,50.7491 c -16.5229,16.7261 -34.3263,32.5507 -73.3636,33.4287 -57.2353,-2.1167 -115.1473,-3.0229 -127.3624,-85.6785 l -4.9196,-96.565 c 11.8691,-46.1415 24.8607,-91.6274 106.2891,-97.1358 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc27 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 1149.5126,4603.0938 c 16.9644,53.7351 27.5867,115.3556 79.8449,125.2095 40.6394,18.5326 82.192,48.3802 116.4128,-12.6263"/>
+          <path class="tpath" fill="none" stroke="{{ $tc27 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 1326.8815,4686.3171 c -20.6596,12.2825 -42.1377,26.6968 -44.8071,-7.876 -3.7465,-36.0346 11.8297,-52.6452 18.3088,-78.4006"/>
+          <path class="tpath" fill="none" stroke="{{ $tc27 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 1185.7216,4602.3266 c 4.8328,-21.5009 20.658,-37.8934 55.2919,-45.5451"/>
+          <path class="tpath" fill="none" stroke="{{ $tc27 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 1203.6986,4650.6496 c 11.7523,11.2108 23.5579,2.0862 35.4305,-32.6659 6.1749,-26.4234 17.1202,-33.5502 27.6967,-42.169"/>
+        </g>
+        @php $tn28=$teeth[28]??null; $ts28=$tn28?->status??'healthy'; $tc28=$sc[$ts28]??'#0d9488'; $tid28=$tn28?->id??0; @endphp
+        <g id="tpg28" data-tooth="28">
+          <path class="tpath" fill="none" stroke="{{ $tc28 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 938.92934,4364.6107 c -33.55984,46.2765 -41.61371,79.4741 -38.21076,106.7969 10.0392,47.5391 15.23438,98.5575 65.21008,117.4125 79.75484,26.5724 96.92204,4.5195 129.32574,-5.696 37.0786,-18.0279 66.236,-40.6098 87.2469,-67.8752 16.1582,-11.1647 14.9508,-22.3748 15.6052,-33.58 -2.4957,-20.817 1.9828,-34.8706 3.5837,-51.7149 2.4404,-32.671 -11.6624,-55.4749 -19.6131,-81.9482 -23.5156,-19.1476 -40.7452,-45.4412 -79.186,-47.6213 l -66.3745,-1.8979 c -40.88605,-2.1426 -68.77546,33.3254 -97.58726,66.1241 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc28 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 956.14583,4374.1385 c 11.85848,16.6764 26.57651,36.3083 34.36077,46.6419 4.18245,7.3794 0.65413,12.5773 1.66094,24.1423 -4.98618,30.0185 4.32248,28.0745 12.84076,34.5165 8.6923,6.7408 17.6132,13.0274 24.0746,24.2011 7.4145,22.416 17.9461,17.4321 27.532,20.7618 l 39.6369,7.0003 c 31.4463,9.4664 36.3912,-5.0371 53.4639,-5.8945"/>
+          <path class="tpath" fill="none" stroke="{{ $tc28 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 1140.3639,4475.4832 c 2.0667,11.4465 -5.3603,24.2239 11.1188,33.6499"/>
+          <path class="tpath" fill="none" stroke="{{ $tc28 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 1054.9855,4488.1908 73.5058,-87.7389 c 15.4457,-18.6658 27.2614,-23.1831 28.4121,13.8675"/>
+          <path class="tpath" fill="none" stroke="{{ $tc28 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 1043.122,4409.7112 c 7.2005,-22.1077 27.4576,-44.1812 62.2425,-66.2166 -13.4721,4.7005 -26.9088,9.5081 -44.8297,0.7447 -21.243,-10.412 -31.365,1.564 -43.9879,8.5056"/>
+        </g>
+        @php $tn29=$teeth[29]??null; $ts29=$tn29?->status??'healthy'; $tc29=$sc[$ts29]??'#0d9488'; $tid29=$tn29?->id??0; @endphp
+        <g id="tpg29" data-tooth="29">
+          <path class="tpath" fill="none" stroke="{{ $tc29 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 953.50553,4065.5099 c 84.62957,42.063 83.39647,64.6805 85.95387,96.7771 -6.4067,38.4417 -4.6963,52.7427 -4.4977,71.5402 1.1438,39.5169 -23.4696,49.9037 -38.97802,70.5878 -49.73286,49.7603 -76.22733,33.6785 -111.31711,41.9501 -32.26832,-4.9695 -51.93089,-9.9061 -70.65104,-14.8402 -52.62222,-12.7728 -48.02348,-32.5462 -67.97457,-49.316 -25.57933,-34.3251 -27.82802,-78.1855 -14.31885,-128.4862 11.07842,-29.9238 33.56092,-52.3027 57.09045,-73.9888 l 57.83516,-29.159 c 44.40002,-18.3587 95.26665,6.8433 106.85781,14.935 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc29 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 874.20223,4062.716 c -18.43021,3.7066 -40.75147,6.4503 -48.39982,47.2873 0.15647,17.7603 -5.54429,31.5936 -12.18629,44.7958 -8.02152,42.5836 12.93348,70.7736 31.63465,100.0832 14.5199,24.5049 32.4894,26.9555 49.91406,32.8894 19.00332,10.044 33.26039,3.31 43.15296,-18.8526 6.05071,-12.649 7.30217,-31.3294 21.63967,-33.5642 6.4761,-11.423 7.33369,-20.9895 6.97552,-30.1542 -8.15316,-15.3074 -1.54432,-36.4747 1.00876,-56.0321 -33.45893,-1.6818 -41.68277,-28.467 -45.53377,-59.6021 -15.56775,-5.8959 -30.50709,-7.9595 -48.20574,-26.8505 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc29 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 914.22733,4250.7525 c 19.8462,-17.9748 19.48496,-49.4977 19.1776,-80.9845 -12.1945,-52.7995 -34.31294,-78.0399 -69.65356,-66.5619"/>
+          <path class="tpath" fill="none" stroke="{{ $tc29 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 952.24626,4217.2312 c -1.55823,-27.0857 -9.80715,-39.223 -20.56997,-45.7436"/>
+          <path class="tpath" fill="none" stroke="{{ $tc29 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 902.58496,4087.7904 2.52301,24.1447"/>
+        </g>
+        @php $tn30=$teeth[30]??null; $ts30=$tn30?->status??'healthy'; $tc30=$sc[$ts30]??'#0d9488'; $tid30=$tn30?->id??0; @endphp
+        <g id="tpg30" data-tooth="30">
+          <path class="tpath" fill="none" stroke="{{ $tc30 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 800.35802,3621.1419 c 20.1324,-6.2601 42.26093,5.8837 64.60304,19.9968 l 30.08203,34.5616 c 21.19477,20.1705 30.08122,40.3088 28.2902,60.4191 -1.92622,35.0526 7.40492,70.1346 30.75904,105.2533 14.9394,43.0934 24.69305,84.7316 -1.16675,116.3767 -15.79251,28.7293 -34.98625,56.0878 -73.47422,75.6699 -40.24293,16.5996 -75.72223,39.1857 -124.25712,45.3645 -31.72407,2.4545 -57.48756,12.9 -108.59323,-10.6291 l -69.70548,-46.7344 c -11.73584,-8.5918 -22.91453,-13.4018 -41.20539,-66.4874 -5.98417,-49.3235 -28.95656,-96.5687 -1.33143,-150.004 l 44.23168,-101.6087 c 20.91367,-26.1165 34.79678,-54.8105 79.49965,-72.2059 26.05479,-8.4072 43.54618,-21.5145 93.14827,-16.9976 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc30 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 870.92104,3669.6027 c 10.63181,22.1543 27.18692,44.3242 27.41234,66.4513 5.37109,44.6558 19.82972,75.7573 34.20278,106.9864 8.40174,21.7718 21.43263,37.9158 10.12588,83.6475 -8.0248,28.683 -15.49587,57.6263 -57.08143,70.5405 l -71.63498,31.7091 c -20.4078,9.6026 -48.11046,8.2006 -77.59722,4.1072 -28.70872,-10.3178 -57.44562,-9.8725 -86.07571,-50.2255 -6.16145,-12.0555 -9.77929,-29.1651 -6.7408,-59.5006"/>
+          <path class="tpath" fill="none" stroke="{{ $tc30 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 629.79752,3900.8687 c -13.81219,0.1574 -24.53767,-4.5079 -22.33698,-29.3689 3.20172,-47.2127 -3.28187,-95.4195 21.05746,-140.4626 -0.0426,-26.2238 -1.67223,-53.5116 18.27717,-66.3317 26.40727,-19.2638 39.04543,-52.369 94.93784,-41.9929 27.5938,6.1214 45.9368,6.4274 55.16997,1.0065"/>
+          <path class="tpath" fill="none" stroke="{{ $tc30 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 795.04569,3674.5765 c -10.25523,25.894 -16.55353,50.2878 -41.59357,81.7879 10.18643,33.711 24.75653,45.7982 39.50608,57.0002 3.67656,9.5172 9.62887,4.8623 6.75209,55.1902 3.60832,48.2866 35.07664,64.9008 53.19532,96.6914"/>
+          <path class="tpath" fill="none" stroke="{{ $tc30 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 689.30942,3889.8176 c 36.25326,-17.6619 72.52154,-41.0632 108.70608,-32.4741"/>
+          <path class="tpath" fill="none" stroke="{{ $tc30 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 888.71072,3789.4772 c -26.61666,41.0548 -58.95771,38.3016 -89.77899,47.1789"/>
+          <path class="tpath" fill="none" stroke="{{ $tc30 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 835.40933,3733.303 c -21.40021,24.1177 -42.62391,48.2888 -41.5868,79.2018"/>
+          <path class="tpath" fill="none" stroke="{{ $tc30 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 647.52633,3714.7076 c 24.5979,29.0842 58.27697,45.5248 105.92353,42.5189"/>
+        </g>
+        @php $tn31=$teeth[31]??null; $ts31=$tn31?->status??'healthy'; $tc31=$sc[$ts31]??'#0d9488'; $tid31=$tn31?->id??0; @endphp
+        <g id="tpg31" data-tooth="31">
+          <path class="tpath" fill="none" stroke="{{ $tc31 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 594.58836,3190.4293 c -32.14109,14.9401 -64.94859,24.433 -94.97621,56.6481 -24.86434,19.5811 -43.36449,54.8361 -47.74088,124.8754 -2.08724,49.2471 -14.02251,97.2369 18.57049,150.9113 27.98329,23.5895 10.84062,31.6183 86.88135,71.7794 39.17291,16.4108 67.29336,52.594 127.50452,31.3684 29.12725,-8.2492 38.96451,-4.993 88.86051,-25.6295 21.14018,-4.8161 38.6515,-16.9377 48.39305,-44.7011 10.49192,-17.9633 19.25904,-42.9033 25.20755,-79.2446 -2.04265,-31.396 -6.77458,-44.3127 -11.04888,-60.374 -6.83493,-42.2141 -4.27141,-59.7999 0.18958,-72.4135 0.46203,-21.2633 -3.77566,-42.5388 -17.07431,-63.838 -6.98465,-23.0183 -11.58292,-44.7855 -52.40322,-69.9651 -37.16919,-27.9418 -61.2924,-48.9559 -172.36355,-19.4168 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc31 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 665.07685,3596.6497 c 14.52737,-6.9312 14.68835,-19.0357 58.66111,-15.3637 10.63582,-1.3773 21.26858,-1.5802 31.93932,-16.2957 l 23.31415,-14.5942 19.87266,-17.1894 c 15.5059,-16.8558 19.10186,-35.0665 13.93524,-54.2741 -2.72407,-21.309 -7.07936,-47.0028 -3.31511,-50.8709 2.04722,-13.2116 -2.03056,-34.6345 -6.74757,-56.9144 2.16431,-28.7559 22.56243,-24.7504 -4.03499,-105.1834 -1.7323,-17.1466 -10.79646,-25.9155 -27.51841,-25.9342 -13.60943,-2.6793 -17.26674,-8.9504 -34.42396,-22.504 -12.19351,-7.2158 -18.49979,-14.4163 -45.63308,-21.6712 -20.69659,2.6219 -41.3683,-4.259 -62.1026,12.7685 l -36.29254,32.6637 c -29.26143,24.254 -32.39519,37.7016 -34.61579,50.7716 -8.13158,19.519 -4.95524,39.0676 -1.8776,58.616 0.68869,16.6606 6.42405,30.4548 23.17647,37.9918 -8.0462,9.5862 -17.07553,14.189 -20.80919,45.6354 -8.58919,54.6074 4.61698,68.6049 13.55608,90.553 17.46236,25.3767 34.94112,44.4883 52.4145,65.6547"/>
+          <path class="tpath" fill="none" stroke="{{ $tc31 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 713.39097,3252.8095 c -15.71946,10.7174 -28.04451,27.4113 -34.62482,54.2199 2.82789,20.9661 7.68379,37.9025 12.78881,54.344 4.29835,22.6759 16.1501,21.4013 10.14393,76.751 -10.77002,10.4492 -13.43327,18.2198 -10.40799,24.1107 19.47247,41.4901 12.68398,78.1344 -18.39227,110.2971"/>
+          <path class="tpath" fill="none" stroke="{{ $tc31 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 742.85688,3522.7152 c -9.57112,-20.7871 -20.47298,-40.9132 -48.13803,-52.7125 -3.81753,-11.7678 -16.80463,-16.4422 -41.34757,-12.1772"/>
+          <path class="tpath" fill="none" stroke="{{ $tc31 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 613.90808,3384.4461 c 39.14239,-3.2572 73.52774,-3.7561 85.32197,8.8441"/>
+          <path class="tpath" fill="none" stroke="{{ $tc31 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 797.4672,3408.2026 c -30.62243,-8.5033 -51.77315,-25.2506 -99.08794,-19.225"/>
+          <path class="tpath" fill="none" stroke="{{ $tc31 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 786.35965,3370.2423 -42.29991,22.3032"/>
+          <path class="tpath" fill="none" stroke="{{ $tc31 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 617.6046,3289.6278 c 28.08485,5.5333 47.71759,11.0445 62.02587,16.5418"/>
+          <path class="tpath" fill="none" stroke="{{ $tc31 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 654.8066,3238.863 c 11.14464,21.8683 25.09393,43.744 23.10426,65.5779"/>
+        </g>
+        @php $tn32=$teeth[32]??null; $ts32=$tn32?->status??'healthy'; $tc32=$sc[$ts32]??'#0d9488'; $tid32=$tn32?->id??0; @endphp
+        <g id="tpg32" data-tooth="32">
+          <path class="tpath" fill="none" stroke="{{ $tc32 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 474.19252,3078.0448 c -5.34811,-37.4434 -29.28136,-41.0252 -10.02206,-123.3026 10.03291,-58.7031 38.80784,-107.1908 103.80451,-135.9356 39.34404,-5.601 75.20338,-33.6533 120.68924,0.316 13.25756,11.5873 23.13475,17.7637 31.83776,22.4972 18.08064,18.8234 53.22468,19.9358 70.45019,91.5641 -0.0153,27.2957 -6.67175,37.8615 5.78169,96.5672 3.94763,22.6219 15.43417,36.8072 2.38082,78.4548 -14.06757,19.2616 -12.79667,39.6593 -56.18325,56.7496 -11.90688,10.9977 -106.51418,21.3761 -137.12266,20.3307 -30.60848,-1.0453 -29.08532,9.4074 -75.77153,-34.6812 -18.51546,-23.3739 -35.33153,-32.8573 -55.84471,-72.5602 z"/>
+          <path class="tpath" fill="none" stroke="{{ $tc32 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 691.17367,2848.4396 c -34.99181,-52.1599 -74.04552,-28.9701 -113.81302,7.4607 -22.60493,27.1505 -29.59077,55.7621 -26.94748,85.2746 0.9732,17.7247 8.68277,29.7059 25.77396,33.6883 -11.27941,6.305 -15.7872,18.0564 -15.60521,33.5799 l 15.28248,89.6955 c 14.57023,36.9611 26.14197,36.7653 38.66658,48.3772 6.68386,3.3823 13.45197,6.6808 22.39341,7.8173 12.36728,-4.1705 24.73033,-6.7262 37.17942,-42.1442 -10.52639,-3.3744 33.19385,-20.1909 1.00199,-53.4458 -10.36868,-11.34 24.68871,-48.0946 4.51571,-78.4367 -10.324,-33.3846 -20.1559,-62.2321 -28.25183,-75.0742 21.79511,-3.5449 15.28997,-23.3598 22.50625,-35.2861"/>
+          <path class="tpath" fill="none" stroke="{{ $tc32 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 625.52576,2898.2679 25.84392,6.9643"/>
+          <path class="tpath" fill="none" stroke="{{ $tc32 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 727.0532,2973.534 c -13.69586,6.1675 -25.54989,16.664 -45.70981,7.639"/>
+          <path class="tpath" fill="none" stroke="{{ $tc32 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 643.14391,3083.6595 c 16.1056,-2.4766 28.15913,-10.6577 32.83524,-29.2245"/>
+          <path class="tpath" fill="none" stroke="{{ $tc32 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 613.25823,2974.0981 c 21.38663,-4.1252 44.93465,-16.8008 62.08003,-4.1478"/>
+          <path class="tpath" fill="none" stroke="{{ $tc32 }}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="m 680.91909,3143.2414 c 13.62093,-0.4232 26.49391,0.7307 42.25252,-4.1998 22.52109,-25.1572 30.59892,-25.1915 44.92222,-36.0894 2.69461,-0.8148 31.07865,-30.3741 10.54114,-74.9727 -11.34052,-22.8215 -14.09221,-30.7058 -9.35859,-47.4384 -11.13443,-39.0179 -5.09726,-47.8021 -7.57128,-71.5718"/>
+        </g>
+
+        {{-- Ellipse hit areas + labels --}}
+        <g onclick="openToothPopup(1)" onmouseenter="hoverTooth(1,1)" onmouseleave="hoverTooth(1,0)" style="cursor:pointer">
+          <ellipse id="te1" cx="1630" cy="560" rx="300" ry="278" fill="{{ $tc1 }}" class="tellipse"/>
+          <ellipse cx="1630" cy="560" rx="300" ry="278" fill="transparent"/>
+          <text x="1630" y="267" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts1==='missing'?'✕':'1' }}</text>
+        </g>
+        <g onclick="openToothPopup(2)" onmouseenter="hoverTooth(2,1)" onmouseleave="hoverTooth(2,0)" style="cursor:pointer">
+          <ellipse id="te2" cx="1316" cy="661" rx="268" ry="257" fill="{{ $tc2 }}" class="tellipse"/>
+          <ellipse cx="1316" cy="661" rx="268" ry="257" fill="transparent"/>
+          <text x="1316" y="389" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts2==='missing'?'✕':'2' }}</text>
+        </g>
+        <g onclick="openToothPopup(3)" onmouseenter="hoverTooth(3,1)" onmouseleave="hoverTooth(3,0)" style="cursor:pointer">
+          <ellipse id="te3" cx="1086" cy="850" rx="263" ry="286" fill="{{ $tc3 }}" class="tellipse"/>
+          <ellipse cx="1086" cy="850" rx="263" ry="286" fill="transparent"/>
+          <text x="1086" y="550" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts3==='missing'?'✕':'3' }}</text>
+        </g>
+        <g onclick="openToothPopup(4)" onmouseenter="hoverTooth(4,1)" onmouseleave="hoverTooth(4,0)" style="cursor:pointer">
+          <ellipse id="te4" cx="974" cy="1085" rx="297" ry="268" fill="{{ $tc4 }}" class="tellipse"/>
+          <ellipse cx="974" cy="1085" rx="297" ry="268" fill="transparent"/>
+          <text x="974" y="802" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts4==='missing'?'✕':'4' }}</text>
+        </g>
+        <g onclick="openToothPopup(5)" onmouseenter="hoverTooth(5,1)" onmouseleave="hoverTooth(5,0)" style="cursor:pointer">
+          <ellipse id="te5" cx="846" cy="1367" rx="301" ry="254" fill="{{ $tc5 }}" class="tellipse"/>
+          <ellipse cx="846" cy="1367" rx="301" ry="254" fill="transparent"/>
+          <text x="846" y="1098" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts5==='missing'?'✕':'5' }}</text>
+        </g>
+        <g onclick="openToothPopup(6)" onmouseenter="hoverTooth(6,1)" onmouseleave="hoverTooth(6,0)" style="cursor:pointer">
+          <ellipse id="te6" cx="759" cy="1694" rx="356" ry="370" fill="{{ $tc6 }}" class="tellipse"/>
+          <ellipse cx="759" cy="1694" rx="356" ry="370" fill="transparent"/>
+          <text x="759" y="1309" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts6==='missing'?'✕':'6' }}</text>
+        </g>
+        <g onclick="openToothPopup(7)" onmouseenter="hoverTooth(7,1)" onmouseleave="hoverTooth(7,0)" style="cursor:pointer">
+          <ellipse id="te7" cx="679" cy="2082" rx="343" ry="354" fill="{{ $tc7 }}" class="tellipse"/>
+          <ellipse cx="679" cy="2082" rx="343" ry="354" fill="transparent"/>
+          <text x="679" y="1713" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts7==='missing'?'✕':'7' }}</text>
+        </g>
+        <g onclick="openToothPopup(8)" onmouseenter="hoverTooth(8,1)" onmouseleave="hoverTooth(8,0)" style="cursor:pointer">
+          <ellipse id="te8" cx="631" cy="2484" rx="347" ry="321" fill="{{ $tc8 }}" class="tellipse"/>
+          <ellipse cx="631" cy="2484" rx="347" ry="321" fill="transparent"/>
+          <text x="631" y="2148" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts8==='missing'?'✕':'8' }}</text>
+        </g>
+        <g onclick="openToothPopup(16)" onmouseenter="hoverTooth(16,1)" onmouseleave="hoverTooth(16,0)" style="cursor:pointer">
+          <ellipse id="te16" cx="1997" cy="560" rx="300" ry="278" fill="{{ $tc16 }}" class="tellipse"/>
+          <ellipse cx="1997" cy="560" rx="300" ry="278" fill="transparent"/>
+          <text x="1997" y="267" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts16==='missing'?'✕':'16' }}</text>
+        </g>
+        <g onclick="openToothPopup(15)" onmouseenter="hoverTooth(15,1)" onmouseleave="hoverTooth(15,0)" style="cursor:pointer">
+          <ellipse id="te15" cx="2311" cy="662" rx="268" ry="257" fill="{{ $tc15 }}" class="tellipse"/>
+          <ellipse cx="2311" cy="662" rx="268" ry="257" fill="transparent"/>
+          <text x="2311" y="389" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts15==='missing'?'✕':'15' }}</text>
+        </g>
+        <g onclick="openToothPopup(14)" onmouseenter="hoverTooth(14,1)" onmouseleave="hoverTooth(14,0)" style="cursor:pointer">
+          <ellipse id="te14" cx="2541" cy="851" rx="263" ry="286" fill="{{ $tc14 }}" class="tellipse"/>
+          <ellipse cx="2541" cy="851" rx="263" ry="286" fill="transparent"/>
+          <text x="2541" y="550" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts14==='missing'?'✕':'14' }}</text>
+        </g>
+        <g onclick="openToothPopup(13)" onmouseenter="hoverTooth(13,1)" onmouseleave="hoverTooth(13,0)" style="cursor:pointer">
+          <ellipse id="te13" cx="2653" cy="1086" rx="297" ry="268" fill="{{ $tc13 }}" class="tellipse"/>
+          <ellipse cx="2653" cy="1086" rx="297" ry="268" fill="transparent"/>
+          <text x="2653" y="803" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts13==='missing'?'✕':'13' }}</text>
+        </g>
+        <g onclick="openToothPopup(12)" onmouseenter="hoverTooth(12,1)" onmouseleave="hoverTooth(12,0)" style="cursor:pointer">
+          <ellipse id="te12" cx="2781" cy="1367" rx="301" ry="254" fill="{{ $tc12 }}" class="tellipse"/>
+          <ellipse cx="2781" cy="1367" rx="301" ry="254" fill="transparent"/>
+          <text x="2781" y="1098" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts12==='missing'?'✕':'12' }}</text>
+        </g>
+        <g onclick="openToothPopup(11)" onmouseenter="hoverTooth(11,1)" onmouseleave="hoverTooth(11,0)" style="cursor:pointer">
+          <ellipse id="te11" cx="2868" cy="1694" rx="356" ry="370" fill="{{ $tc11 }}" class="tellipse"/>
+          <ellipse cx="2868" cy="1694" rx="356" ry="370" fill="transparent"/>
+          <text x="2868" y="1309" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts11==='missing'?'✕':'11' }}</text>
+        </g>
+        <g onclick="openToothPopup(10)" onmouseenter="hoverTooth(10,1)" onmouseleave="hoverTooth(10,0)" style="cursor:pointer">
+          <ellipse id="te10" cx="2948" cy="2083" rx="343" ry="354" fill="{{ $tc10 }}" class="tellipse"/>
+          <ellipse cx="2948" cy="2083" rx="343" ry="354" fill="transparent"/>
+          <text x="2948" y="1714" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts10==='missing'?'✕':'10' }}</text>
+        </g>
+        <g onclick="openToothPopup(9)" onmouseenter="hoverTooth(9,1)" onmouseleave="hoverTooth(9,0)" style="cursor:pointer">
+          <ellipse id="te9" cx="2996" cy="2484" rx="347" ry="321" fill="{{ $tc9 }}" class="tellipse"/>
+          <ellipse cx="2996" cy="2484" rx="347" ry="321" fill="transparent"/>
+          <text x="2996" y="2149" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts9==='missing'?'✕':'9' }}</text>
+        </g>
+        <g onclick="openToothPopup(17)" onmouseenter="hoverTooth(17,1)" onmouseleave="hoverTooth(17,0)" style="cursor:pointer">
+          <ellipse id="te17" cx="2998" cy="2990" rx="299" ry="320" fill="{{ $tc17 }}" class="tellipse"/>
+          <ellipse cx="2998" cy="2990" rx="299" ry="320" fill="transparent"/>
+          <text x="2998" y="3385" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts17==='missing'?'✕':'17' }}</text>
+        </g>
+        <g onclick="openToothPopup(18)" onmouseenter="hoverTooth(18,1)" onmouseleave="hoverTooth(18,0)" style="cursor:pointer">
+          <ellipse id="te18" cx="2984" cy="3405" rx="320" ry="358" fill="{{ $tc18 }}" class="tellipse"/>
+          <ellipse cx="2984" cy="3405" rx="320" ry="358" fill="transparent"/>
+          <text x="2984" y="3838" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts18==='missing'?'✕':'18' }}</text>
+        </g>
+        <g onclick="openToothPopup(19)" onmouseenter="hoverTooth(19,1)" onmouseleave="hoverTooth(19,0)" style="cursor:pointer">
+          <ellipse id="te19" cx="2884" cy="3851" rx="351" ry="356" fill="{{ $tc19 }}" class="tellipse"/>
+          <ellipse cx="2884" cy="3851" rx="351" ry="356" fill="transparent"/>
+          <text x="2884" y="4282" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts19==='missing'?'✕':'19' }}</text>
+        </g>
+        <g onclick="openToothPopup(20)" onmouseenter="hoverTooth(20,1)" onmouseleave="hoverTooth(20,0)" style="cursor:pointer">
+          <ellipse id="te20" cx="2748" cy="4194" rx="276" ry="276" fill="{{ $tc20 }}" class="tellipse"/>
+          <ellipse cx="2748" cy="4194" rx="276" ry="276" fill="transparent"/>
+          <text x="2748" y="4545" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts20==='missing'?'✕':'20' }}</text>
+        </g>
+        <g onclick="openToothPopup(21)" onmouseenter="hoverTooth(21,1)" onmouseleave="hoverTooth(21,0)" style="cursor:pointer">
+          <ellipse id="te21" cx="2576" cy="4456" rx="268" ry="275" fill="{{ $tc21 }}" class="tellipse"/>
+          <ellipse cx="2576" cy="4456" rx="268" ry="275" fill="transparent"/>
+          <text x="2576" y="4806" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts21==='missing'?'✕':'21' }}</text>
+        </g>
+        <g onclick="openToothPopup(22)" onmouseenter="hoverTooth(22,1)" onmouseleave="hoverTooth(22,0)" style="cursor:pointer">
+          <ellipse id="te22" cx="2376" cy="4662" rx="252" ry="259" fill="{{ $tc22 }}" class="tellipse"/>
+          <ellipse cx="2376" cy="4662" rx="252" ry="259" fill="transparent"/>
+          <text x="2376" y="4996" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts22==='missing'?'✕':'22' }}</text>
+        </g>
+        <g onclick="openToothPopup(23)" onmouseenter="hoverTooth(23,1)" onmouseleave="hoverTooth(23,0)" style="cursor:pointer">
+          <ellipse id="te23" cx="2168" cy="4760" rx="239" ry="257" fill="{{ $tc23 }}" class="tellipse"/>
+          <ellipse cx="2168" cy="4760" rx="239" ry="257" fill="transparent"/>
+          <text x="2168" y="5093" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts23==='missing'?'✕':'23' }}</text>
+        </g>
+        <g onclick="openToothPopup(24)" onmouseenter="hoverTooth(24,1)" onmouseleave="hoverTooth(24,0)" style="cursor:pointer">
+          <ellipse id="te24" cx="1938" cy="4814" rx="242" ry="232" fill="{{ $tc24 }}" class="tellipse"/>
+          <ellipse cx="1938" cy="4814" rx="242" ry="232" fill="transparent"/>
+          <text x="1938" y="5121" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts24==='missing'?'✕':'24' }}</text>
+        </g>
+        <g onclick="openToothPopup(32)" onmouseenter="hoverTooth(32,1)" onmouseleave="hoverTooth(32,0)" style="cursor:pointer">
+          <ellipse id="te32" cx="629" cy="2990" rx="299" ry="320" fill="{{ $tc32 }}" class="tellipse"/>
+          <ellipse cx="629" cy="2990" rx="299" ry="320" fill="transparent"/>
+          <text x="629" y="3385" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts32==='missing'?'✕':'32' }}</text>
+        </g>
+        <g onclick="openToothPopup(31)" onmouseenter="hoverTooth(31,1)" onmouseleave="hoverTooth(31,0)" style="cursor:pointer">
+          <ellipse id="te31" cx="643" cy="3404" rx="320" ry="358" fill="{{ $tc31 }}" class="tellipse"/>
+          <ellipse cx="643" cy="3404" rx="320" ry="358" fill="transparent"/>
+          <text x="643" y="3837" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts31==='missing'?'✕':'31' }}</text>
+        </g>
+        <g onclick="openToothPopup(30)" onmouseenter="hoverTooth(30,1)" onmouseleave="hoverTooth(30,0)" style="cursor:pointer">
+          <ellipse id="te30" cx="743" cy="3851" rx="351" ry="356" fill="{{ $tc30 }}" class="tellipse"/>
+          <ellipse cx="743" cy="3851" rx="351" ry="356" fill="transparent"/>
+          <text x="743" y="4282" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts30==='missing'?'✕':'30' }}</text>
+        </g>
+        <g onclick="openToothPopup(29)" onmouseenter="hoverTooth(29,1)" onmouseleave="hoverTooth(29,0)" style="cursor:pointer">
+          <ellipse id="te29" cx="879" cy="4193" rx="276" ry="276" fill="{{ $tc29 }}" class="tellipse"/>
+          <ellipse cx="879" cy="4193" rx="276" ry="276" fill="transparent"/>
+          <text x="879" y="4544" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts29==='missing'?'✕':'29' }}</text>
+        </g>
+        <g onclick="openToothPopup(28)" onmouseenter="hoverTooth(28,1)" onmouseleave="hoverTooth(28,0)" style="cursor:pointer">
+          <ellipse id="te28" cx="1051" cy="4456" rx="268" ry="275" fill="{{ $tc28 }}" class="tellipse"/>
+          <ellipse cx="1051" cy="4456" rx="268" ry="275" fill="transparent"/>
+          <text x="1051" y="4805" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts28==='missing'?'✕':'28' }}</text>
+        </g>
+        <g onclick="openToothPopup(27)" onmouseenter="hoverTooth(27,1)" onmouseleave="hoverTooth(27,0)" style="cursor:pointer">
+          <ellipse id="te27" cx="1251" cy="4661" rx="252" ry="259" fill="{{ $tc27 }}" class="tellipse"/>
+          <ellipse cx="1251" cy="4661" rx="252" ry="259" fill="transparent"/>
+          <text x="1251" y="4995" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts27==='missing'?'✕':'27' }}</text>
+        </g>
+        <g onclick="openToothPopup(26)" onmouseenter="hoverTooth(26,1)" onmouseleave="hoverTooth(26,0)" style="cursor:pointer">
+          <ellipse id="te26" cx="1459" cy="4760" rx="239" ry="257" fill="{{ $tc26 }}" class="tellipse"/>
+          <ellipse cx="1459" cy="4760" rx="239" ry="257" fill="transparent"/>
+          <text x="1459" y="5092" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts26==='missing'?'✕':'26' }}</text>
+        </g>
+        <g onclick="openToothPopup(25)" onmouseenter="hoverTooth(25,1)" onmouseleave="hoverTooth(25,0)" style="cursor:pointer">
+          <ellipse id="te25" cx="1689" cy="4813" rx="242" ry="232" fill="{{ $tc25 }}" class="tellipse"/>
+          <ellipse cx="1689" cy="4813" rx="242" ry="232" fill="transparent"/>
+          <text x="1689" y="5120" text-anchor="middle" font-size="65" font-weight="800" fill="#94a3b8" font-family="Cairo,Arial" pointer-events="none">{{ $ts25==='missing'?'✕':'25' }}</text>
+        </g>
+        </svg>
+        </div>
+
+        {{-- Tooth popup --}}
+        <div id="tooth-popup" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(15,23,42,0.5);backdrop-filter:blur(4px)" onclick="if(event.target===this)closeToothPopup()">
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:20px;padding:28px;width:290px;box-shadow:0 24px 60px rgba(0,0,0,0.3);direction:rtl">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+              <div><div id="pp-name" style="font-weight:800;font-size:16px;color:#111827"></div>
+              <div id="pp-status" style="font-size:12px;color:#9ca3af;margin-top:2px"></div></div>
+              <button onclick="closeToothPopup()" style="background:#f3f4f6;border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:16px;font-family:Cairo,sans-serif">✕</button>
+            </div>
+            <form id="pp-form" method="POST">
+              @csrf
+              <input type="hidden" id="pp-tn" name="tooth_number">
+              <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:6px">الحالة</label>
+              <select id="pp-st" name="status" style="width:100%;border:1.5px solid #e5e7eb;border-radius:10px;padding:10px 14px;font-size:14px;font-family:Cairo,sans-serif;margin-bottom:12px;outline:none;cursor:pointer">
+                <option value="healthy">سليم</option>
+                <option value="filling">حشو</option>
+                <option value="crown">تلبيسة</option>
+                <option value="root_canal">علاج عصب</option>
+                <option value="missing">مفقود</option>
+                <option value="needs_extraction">يحتاج خلع</option>
+                <option value="implant">زراعة</option>
+                <option value="bridge">جسر</option>
+                <option value="other">أخرى</option>
+              </select>
+              <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:6px">ملاحظات</label>
+              <input type="text" id="pp-nt" name="notes" placeholder="ملاحظات..." style="width:100%;border:1.5px solid #e5e7eb;border-radius:10px;padding:10px 14px;font-size:13px;font-family:Cairo,sans-serif;margin-bottom:16px;outline:none;box-sizing:border-box">
+              <button type="submit" style="width:100%;background:linear-gradient(135deg,#2563eb,#1d4ed8);border:none;color:#fff;border-radius:10px;padding:12px;font-size:14px;font-family:Cairo,sans-serif;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(37,99,235,0.3)">💾 حفظ</button>
+            </form>
+          </div>
+        </div>
+
+        @push('scripts')
+        <script>
+        @php
+        $td=[];
+        for($n=1;$n<=32;$n++){
+          $tt=$teeth[$n]??null;
+          $td[$n]=['status'=>$tt?->status??'healthy','id'=>$tt?->id??0,'notes'=>$tt?->notes??'',
+            'route'=>route('patients.tooth.update',[$patient,$tt?->id??'new'])];
+        }
+        @endphp
+        const TD = @json($td);
+        const SL = {'healthy':'سليم','filling':'حشو','crown':'تلبيسة','root_canal':'علاج عصب',
+          'missing':'مفقود','needs_extraction':'يحتاج خلع','implant':'زراعة','bridge':'جسر','other':'أخرى'};
+
+        function hoverTooth(n, on) {
+          var el = document.getElementById('te'+n);
+          if(el) el.style.opacity = on ? '0.18' : '0';
+          var paths = document.querySelectorAll('#tpg'+n+' path');
+          var d = TD[n]; var color = d ? getColor(d.status) : '#0d9488';
+          paths.forEach(function(p){
+            p.style.filter = on ? 'drop-shadow(0 0 12px '+color+')' : 'none';
+            p.style.strokeWidth = on ? '14' : '10';
+          });
+        }
+
+        function getColor(s){
+          var m={'healthy':'#0d9488','filling':'#2563eb','crown':'#7c3aed','root_canal':'#d97706',
+            'missing':'#9ca3af','needs_extraction':'#dc2626','implant':'#0891b2','bridge':'#7c3aed'};
+          return m[s]||'#0d9488';
+        }
+
+        function openToothPopup(n) {
+          var d = TD[n]; if(!d) return;
+          document.getElementById('pp-name').textContent = '🦷 سن رقم ' + n;
+          document.getElementById('pp-status').textContent = SL[d.status] || d.status;
+          document.getElementById('pp-st').value = d.status;
+          document.getElementById('pp-nt').value = d.notes;
+          document.getElementById('pp-tn').value = n;
+          document.getElementById('pp-form').action = d.route;
+          document.getElementById('tooth-popup').style.display = 'block';
+        }
+        function closeToothPopup(){ document.getElementById('tooth-popup').style.display='none'; }
+        </script>
+        @endpush
+      </div>
+    </div>
+
+    {{-- APPOINTMENTS --}}
+    <div x-show="tab==='appointments'" x-cloak>
+        <div class="card">
+            <div class="card-header"><span class="card-title">المواعيد</span>
+                <a href="{{ route('appointments.create',['patient_id'=>$patient->id]) }}" class="btn btn-success btn-sm">+ موعد</a>
+            </div>
+            @forelse($patient->appointments as $apt)
+                <div style="padding:14px 22px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #f9fafb">
+                    <div style="display:flex;align-items:center;gap:14px">
+                        <div style="background:#eff6ff;border-radius:10px;padding:9px 11px;text-align:center;min-width:60px">
+                            <div style="font-size:13px;font-weight:800;color:#1d4ed8">{{ $apt->starts_at->format('H:i') }}</div>
+                            <div style="font-size:10px;color:#93c5fd">{{ $apt->starts_at->format('d/m') }}</div>
+                        </div>
+                        <div>
+                            <div style="font-weight:700;font-size:14px;color:#111827">{{ $apt->title ?? 'موعد' }}</div>
+                            <div style="font-size:12px;color:#9ca3af">{{ $apt->ends_at->format('H:i') }} انتهاء</div>
+                        </div>
+                    </div>
+                    <span class="badge {{ $apt->status==='completed'?'badge-green':($apt->status==='cancelled'?'badge-red':'badge-blue') }}">{{ $apt->status_label }}</span>
+                </div>
+            @empty <div style="padding:40px;text-align:center;color:#9ca3af">لا يوجد مواعيد</div>
+            @endforelse
+        </div>
+    </div>
+
+    {{-- INVOICES --}}
+    <div x-show="tab==='invoices'" x-cloak>
+        <div class="card">
+            <div class="card-header"><span class="card-title">الفواتير</span>
+                <a href="{{ route('invoices.create',['patient_id'=>$patient->id]) }}" class="btn btn-sm" style="background:#f59e0b;color:#fff">+ فاتورة</a>
+            </div>
+            @forelse($patient->invoices as $inv)
+                <div style="padding:14px 22px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #f9fafb">
+                    <div>
+                        <a href="{{ route('invoices.show',$inv) }}" style="font-weight:700;color:#2563eb;text-decoration:none">{{ $inv->invoice_number }}</a>
+                        <div style="font-size:12px;color:#9ca3af">{{ $inv->invoice_date->format('d/m/Y') }}</div>
+                    </div>
+                    <div style="text-align:left">
+                        <div style="font-weight:800;font-size:15px">{{ number_format($inv->total_amount,0) }} ج</div>
+                        @if($inv->remaining>0) <div style="font-size:12px;color:#ef4444">متبقي {{ number_format($inv->remaining,0) }} ج</div>
+                        @else <span class="badge badge-green">مدفوع</span> @endif
+                    </div>
+                </div>
+            @empty <div style="padding:40px;text-align:center;color:#9ca3af">لا يوجد فواتير</div>
+            @endforelse
+        </div>
+    </div>
+
+    {{-- PRESCRIPTIONS --}}
+    <div x-show="tab==='prescriptions'" x-cloak>
+        <div class="card">
+            <div class="card-header"><span class="card-title">الروشتات</span>
+                <a href="{{ route('prescriptions.create',['patient_id'=>$patient->id]) }}" class="btn btn-pink btn-sm">+ روشتة</a>
+            </div>
+            @forelse($patient->prescriptions as $rx)
+                <div style="padding:14px 22px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #f9fafb">
+                    <div>
+                        <a href="{{ route('prescriptions.show',$rx) }}" style="font-weight:700;color:#2563eb;text-decoration:none">روشتة {{ $rx->prescription_date->format('d/m/Y') }}</a>
+                        @if($rx->diagnosis)<div style="font-size:12px;color:#6b7280">{{ $rx->diagnosis }}</div>@endif
+                    </div>
+                    <span class="badge badge-purple">{{ $rx->items->count() }} دواء</span>
+                </div>
+            @empty <div style="padding:40px;text-align:center;color:#9ca3af">لا يوجد روشتات</div>
+            @endforelse
+        </div>
+    </div>
+
+    {{-- FILES --}}
+    <div x-show="tab==='files'" x-cloak>
+        <div class="card">
+            <div class="card-header"><span class="card-title">📁 الملفات والأشعة</span></div>
+            <div style="padding:22px">
+                <form method="POST" action="{{ route('patients.files.upload',$patient) }}" enctype="multipart/form-data"
+                    style="background:#f9fafb;border:2px dashed #e5e7eb;border-radius:14px;padding:20px;margin-bottom:20px">
+                    @csrf
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;align-items:end">
+                        <div><label class="form-label">الملف</label>
+                            <input type="file" name="file" required accept=".jpg,.jpeg,.png,.pdf" style="width:100%;border:1.5px solid #e5e7eb;border-radius:10px;padding:9px;font-size:13px;font-family:Cairo,sans-serif">
+                        </div>
+                        <div><label class="form-label">النوع</label>
+                            <select name="file_type" class="form-control"><option value="xray">أشعة 🦷</option><option value="photo">صورة 📷</option><option value="document">مستند 📄</option></select>
+                        </div>
+                        <div><label class="form-label">وصف</label>
+                            <input type="text" name="description" class="form-control" placeholder="وصف...">
+                        </div>
+                        <button type="submit" class="btn btn-primary">رفع</button>
+                    </div>
+                </form>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px">
+                    @forelse($patient->files as $file)
+                        <a href="{{ $file->url }}" target="_blank"
+                            style="border:1.5px solid #e5e7eb;border-radius:14px;padding:16px;text-align:center;text-decoration:none;display:block;transition:all 0.15s"
+                            onmouseover="this.style.borderColor='#3b82f6';this.style.boxShadow='0 4px 16px rgba(59,130,246,0.15)'"
+                            onmouseout="this.style.borderColor='#e5e7eb';this.style.boxShadow='none'">
+                            <div style="font-size:34px;margin-bottom:8px">{{ $file->type_icon }}</div>
+                            <div style="font-size:11px;color:#374151;font-weight:700;word-break:break-all">{{ Str::limit($file->file_name,18) }}</div>
+                        </a>
+                    @empty
+                        <div style="grid-column:1/-1;padding:40px;text-align:center;color:#9ca3af">لا يوجد ملفات</div>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- MEDICAL --}}
+    <div x-show="tab==='medical'" x-cloak>
+        @if($patient->medicalHistory)
+            @php $h=$patient->medicalHistory; @endphp
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                <div class="card"><div class="card-header"><span class="card-title">الحساسية</span></div>
+                <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+                    @foreach([[$h->allergy_anesthesia,'حساسية من التخدير'],[$h->allergy_penicillin,'حساسية من البنسيلين']] as [$has,$lbl])
+                    <div style="display:flex;align-items:center;gap:10px;font-size:14px;{{ $has?'color:#dc2626;font-weight:700':'color:#9ca3af' }}">{{ $has?'❌':'✅' }} {{ $lbl }}</div>
+                    @endforeach
+                    @if($h->allergies_other)<div style="background:#fef2f2;border-radius:8px;padding:10px;font-size:13px;color:#dc2626;margin-top:4px">⚠️ {{ $h->allergies_other }}</div>@endif
+                </div></div>
+                <div class="card"><div class="card-header"><span class="card-title">أمراض مزمنة</span></div>
+                <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+                    @foreach([[$h->has_diabetes,'سكر'],[$h->has_heart_disease,'قلب'],[$h->has_bleeding_disorder,'اضطراب نزيف'],[$h->is_pregnant,'حمل']] as [$has,$lbl])
+                    <div style="display:flex;align-items:center;gap:10px;font-size:14px;{{ $has?'color:#dc2626;font-weight:700':'color:#9ca3af' }}">{{ $has?'❌':'✅' }} {{ $lbl }}</div>
+                    @endforeach
+                </div></div>
+            </div>
+        @else
+            <div style="padding:48px;text-align:center;color:#9ca3af">
+                <div style="font-size:48px;margin-bottom:12px">⚕️</div>
+                <a href="{{ route('patients.edit',$patient) }}" class="btn btn-primary">تعديل البيانات</a>
+            </div>
+        @endif
+    </div>
+
+</div>
+
+@push('styles')
+<style>[x-cloak]{display:none!important}</style>
+@endpush
+@endsection

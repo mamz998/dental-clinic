@@ -263,17 +263,24 @@
         <a href="{{ route('appointments.index') }}" class="nav-item {{ request()->routeIs('appointments.*') ? 'active' : '' }}">
             <span class="nav-icon">📅</span> المواعيد
         </a>
+        @if(!auth()->user()->isDoctor())
         <a href="{{ route('invoices.index') }}" class="nav-item {{ request()->routeIs('invoices.*') ? 'active' : '' }}">
             <span class="nav-icon">💰</span> الفواتير
         </a>
+        @endif
         <a href="{{ route('prescriptions.index') }}" class="nav-item {{ request()->routeIs('prescriptions.*') ? 'active' : '' }}">
             <span class="nav-icon">💊</span> الروشتات
         </a>
 
-        <div class="nav-section">التحليل</div>
+        @if(auth()->user()->isAdmin())
+        <div class="nav-section">الإدارة</div>
         <a href="{{ route('reports.index') }}" class="nav-item {{ request()->routeIs('reports.*') ? 'active' : '' }}">
             <span class="nav-icon">📈</span> التقارير
         </a>
+        <a href="{{ route('users.index') }}" class="nav-item {{ request()->routeIs('users.*') ? 'active' : '' }}">
+            <span class="nav-icon">👤</span> المستخدمون
+        </a>
+        @endif
     </nav>
 
     <div class="sidebar-footer">
@@ -281,7 +288,7 @@
             <div class="user-avatar">{{ mb_substr(auth()->user()->name, 0, 1) }}</div>
             <div>
                 <div class="user-name">{{ Str::limit(auth()->user()->name, 18) }}</div>
-                <div class="user-role">طبيب أسنان</div>
+                <div class="user-role">{{ auth()->user()->role_name }}</div>
             </div>
         </div>
         <form method="POST" action="{{ route('logout') }}">

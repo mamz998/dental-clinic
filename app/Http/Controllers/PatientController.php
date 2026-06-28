@@ -11,7 +11,13 @@ class PatientController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Patient::query();
+        $user  = auth()->user();
+        $query = Patient::with('doctor');
+
+        // الدكتور يشوف مرضاه بس
+        if ($user->isDoctor()) {
+            $query->where('doctor_id', $user->id);
+        }
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -27,13 +33,15 @@ class PatientController extends Controller
         }
 
         $patients = $query->latest()->paginate(20)->withQueryString();
+        $doctors  = \App\Models\User::where('role', 'doctor')->where('is_active', true)->get();
 
-        return view('patients.index', compact('patients'));
+        return view('patients.index', compact('patients', 'doctors'));
     }
 
     public function create()
     {
-        return view('patients.create');
+        $doctors = \App\Models\User::where('role', 'doctor')->where('is_active', true)->get();
+        return view('patients.create', compact('doctors'));
     }
 
     public function store(Request $request)
@@ -48,6 +56,7 @@ class PatientController extends Controller
             'address'                 => 'nullable|string',
             'emergency_contact_name'  => 'nullable|string|max:255',
             'emergency_contact_phone' => 'nullable|string|max:20',
+            'doctor_id'               => 'nullable|exists:users,id',
             'notes'                   => 'nullable|string',
             // Medical history
             'allergy_anesthesia'      => 'nullable|boolean',
@@ -62,7 +71,11 @@ class PatientController extends Controller
             'medical_notes'           => 'nullable|string',
         ]);
 
+        $user = auth()->user();
+        $doctorId = $user->isDoctor() ? $user->id : ($validated['doctor_id'] ?? null);
+
         $patient = Patient::create([
+            'doctor_id'               => $doctorId,
             'name'                    => $validated['name'],
             'phone'                   => $validated['phone'],
             'phone_alt'               => $validated['phone_alt'] ?? null,

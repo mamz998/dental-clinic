@@ -12,7 +12,7 @@ class Patient extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'name', 'phone', 'phone_alt', 'date_of_birth', 'gender',
+        'doctor_id', 'name', 'phone', 'phone_alt', 'date_of_birth', 'gender',
         'national_id', 'address', 'emergency_contact_name',
         'emergency_contact_phone', 'photo', 'referral_source', 'notes',
     ];
@@ -24,6 +24,11 @@ class Patient extends Model
     public function getAgeAttribute(): ?int
     {
         return $this->date_of_birth?->age;
+    }
+
+    public function doctor(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(User::class, 'doctor_id');
     }
 
     public function medicalHistory(): HasOne

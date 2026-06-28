@@ -13,8 +13,10 @@ class DatabaseSeeder extends Seeder
         User::firstOrCreate(
             ['email' => 'admin@dental.com'],
             [
-                'name'     => 'الدكتور / صاحب العيادة',
-                'password' => Hash::make('password'),
+                'name'      => 'الدكتور / صاحب العيادة',
+                'password'  => Hash::make('password'),
+                'role'      => 'admin',
+                'is_active' => true,
             ]
         );
     }

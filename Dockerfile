@@ -3,8 +3,7 @@ FROM php:8.4-cli
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     curl git unzip libzip-dev libpng-dev libonig-dev libxml2-dev \
-    nodejs npm \
-    && docker-php-ext-install pdo pdo_mysql mbstring zip exif pcntl bcmath gd \
+    && docker-php-ext-install pdo pdo_mysql pdo_sqlite mbstring zip exif pcntl bcmath gd \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Composer
@@ -13,7 +12,7 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Install Node 20
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
-    && apt-get clean
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -31,12 +30,27 @@ COPY . .
 # Build frontend
 RUN npm run build
 
-# Set permissions
-RUN mkdir -p /var/data storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache \
-    && chmod -R 775 storage bootstrap/cache
+# Run composer scripts after all files are copied
+RUN composer dump-autoload --optimize
 
-# Expose port
+# Set permissions
+RUN mkdir -p /var/data \
+    storage/logs \
+    storage/framework/cache/data \
+    storage/framework/sessions \
+    storage/framework/views \
+    bootstrap/cache \
+    && chmod -R 777 storage bootstrap/cache /var/data
+
 EXPOSE 8000
 
-# Start script
-CMD ["sh", "-c", "touch /var/data/database.sqlite && export DB_DATABASE=/var/data/database.sqlite && php artisan migrate --force && php artisan db:seed --force && php artisan config:cache && php artisan route:cache && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}"]
+CMD ["sh", "-c", "\
+    cp /app/.env.production /app/.env && \
+    touch /var/data/database.sqlite && \
+    php artisan key:generate --force && \
+    php artisan migrate --force && \
+    php artisan db:seed --force && \
+    php artisan storage:link --force && \
+    php artisan config:clear && \
+    php artisan serve --host=0.0.0.0 --port=${PORT:-8000} \
+"]

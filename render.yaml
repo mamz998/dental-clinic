@@ -1,10 +1,8 @@
 services:
   - type: web
     name: dental-clinic
-    runtime: php
+    runtime: docker
     plan: free
-    buildCommand: "./render-build.sh"
-    startCommand: "./render-start.sh"
     envVars:
       - key: APP_NAME
         value: "عيادة الأسنان"

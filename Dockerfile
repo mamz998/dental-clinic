@@ -47,10 +47,7 @@ EXPOSE 8000
 CMD ["sh", "-c", "\
     cp /app/.env.production /app/.env && \
     touch /var/data/database.sqlite && \
-    php artisan key:generate --force && \
     php artisan migrate --force && \
     php artisan db:seed --force && \
-    php artisan storage:link --force && \
-    php artisan config:clear && \
     php artisan serve --host=0.0.0.0 --port=${PORT:-8000} \
 "]

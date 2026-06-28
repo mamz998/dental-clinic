@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: dental-clinic
+    runtime: php
+    plan: free
+    buildCommand: "./render-build.sh"
+    startCommand: "./render-start.sh"
+    envVars:
+      - key: APP_NAME
+        value: "عيادة الأسنان"
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_KEY
+        generateValue: true
+      - key: APP_URL
+        sync: false
+      - key: SESSION_DRIVER
+        value: file
+      - key: CACHE_STORE
+        value: file
+      - key: LOG_LEVEL
+        value: error
+    disk:
+      name: data
+      mountPath: /var/data
+      sizeGB: 1

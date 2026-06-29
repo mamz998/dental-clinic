@@ -6,318 +6,649 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ config('app.name') }} — @yield('title', 'لوحة التحكم')</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <style>
-        *{font-family:'Cairo',sans-serif;box-sizing:border-box;margin:0;padding:0}
-        :root{
-            --blue-dark:#1a56db;
-            --blue-mid:#1e429f;
-            --blue-sidebar:#1a3a6e;
-            --blue-sidebar-dark:#102a50;
-            --blue-light:#eff6ff;
-            --blue-accent:#3b82f6;
-            --pink:#ec4899;
-            --green:#10b981;
-            --red:#ef4444;
-            --yellow:#f59e0b;
-            --bg:#f0f5ff;
-            --card:#ffffff;
-            --text:#111827;
-            --muted:#6b7280;
-            --border:#e5e7eb;
-            --sidebar-w:240px;
+        *, *::before, *::after {
+            font-family: 'Cairo', sans-serif;
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
-        body{background:var(--bg);color:var(--text);min-height:100vh}
 
-        /* ─── SIDEBAR ─── */
-        .sidebar{
-            position:fixed;top:0;right:0;bottom:0;width:var(--sidebar-w);
-            background:linear-gradient(180deg,#1a3a6e 0%,#102a50 100%);
-            display:flex;flex-direction:column;z-index:100;
-            box-shadow:4px 0 24px rgba(0,0,0,0.15);
+        :root {
+            --bg:          #f4f6f9;
+            --card:        #ffffff;
+            --border:      #e8eaed;
+            --border-soft: #f0f2f5;
+            --text:        #0f172a;
+            --text-2:      #475569;
+            --text-3:      #94a3b8;
+            --accent:      #2563eb;
+            --accent-soft: #eff6ff;
+            --green:       #16a34a;
+            --green-soft:  #f0fdf4;
+            --red:         #dc2626;
+            --red-soft:    #fef2f2;
+            --orange:      #ea580c;
+            --orange-soft: #fff7ed;
+            --purple:      #7c3aed;
+            --purple-soft: #f5f3ff;
+            --sidebar-w:   260px;
+            --topbar-h:    60px;
+            --radius:      12px;
+            --radius-lg:   16px;
+            --shadow-sm:   0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+            --shadow:      0 4px 12px rgba(0,0,0,0.06);
+            --shadow-md:   0 8px 24px rgba(0,0,0,0.08);
         }
-        .sidebar-logo{
-            padding:24px 20px 20px;
-            display:flex;align-items:center;gap:12px;
-            border-bottom:1px solid rgba(255,255,255,0.08);
-        }
-        .sidebar-logo .icon{
-            width:44px;height:44px;
-            background:linear-gradient(135deg,#3b82f6,#1d4ed8);
-            border-radius:14px;display:flex;align-items:center;justify-content:center;
-            font-size:22px;flex-shrink:0;
-            box-shadow:0 4px 14px rgba(59,130,246,0.4);
-        }
-        .sidebar-logo .name{color:#fff;font-weight:800;font-size:14px;line-height:1.3}
-        .sidebar-logo .sub{color:rgba(255,255,255,0.4);font-size:11px;margin-top:1px}
 
-        .sidebar-nav{flex:1;padding:12px 12px;overflow-y:auto}
-        .sidebar-nav::-webkit-scrollbar{width:0}
-        .nav-section{font-size:10px;font-weight:700;color:rgba(255,255,255,0.25);
-            text-transform:uppercase;letter-spacing:1.2px;padding:14px 10px 6px}
-        .nav-item{
-            display:flex;align-items:center;gap:10px;
-            padding:11px 14px;border-radius:12px;
-            color:rgba(255,255,255,0.55);font-size:13.5px;font-weight:500;
-            text-decoration:none;transition:all 0.15s;margin-bottom:2px;
+        html, body { height: 100%; }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            font-size: 14px;
+            line-height: 1.5;
         }
-        .nav-item:hover{background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.9)}
-        .nav-item.active{
-            background:linear-gradient(135deg,rgba(59,130,246,0.3),rgba(29,78,216,0.2));
-            color:#fff;font-weight:700;
-            border:1px solid rgba(59,130,246,0.3);
-        }
-        .nav-item .nav-icon{font-size:17px;width:22px;text-align:center;flex-shrink:0}
 
-        .sidebar-footer{padding:16px 12px;border-top:1px solid rgba(255,255,255,0.08)}
-        .user-card{
-            display:flex;align-items:center;gap:10px;
-            padding:10px 12px;border-radius:12px;
-            background:rgba(255,255,255,0.06);margin-bottom:10px;
+        /* ═══════════════════════════════════════
+           SIDEBAR
+        ═══════════════════════════════════════ */
+        .sidebar {
+            position: fixed;
+            top: 0; right: 0; bottom: 0;
+            width: var(--sidebar-w);
+            background: var(--card);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+            overflow: hidden;
         }
-        .user-avatar{
-            width:36px;height:36px;border-radius:10px;
-            background:linear-gradient(135deg,#ec4899,#8b5cf6);
-            display:flex;align-items:center;justify-content:center;
-            font-weight:800;font-size:15px;color:white;flex-shrink:0;
-        }
-        .user-name{color:#fff;font-size:12.5px;font-weight:700}
-        .user-role{color:rgba(255,255,255,0.35);font-size:11px}
-        .btn-logout{
-            width:100%;display:flex;align-items:center;justify-content:center;gap:8px;
-            padding:9px;border-radius:10px;
-            background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.2);
-            color:#fca5a5;font-size:13px;font-family:'Cairo',sans-serif;
-            cursor:pointer;transition:all 0.15s;
-        }
-        .btn-logout:hover{background:rgba(239,68,68,0.22)}
 
-        /* ─── MAIN ─── */
-        .main-wrap{margin-right:var(--sidebar-w);min-height:100vh;display:flex;flex-direction:column}
+        /* Logo / Brand */
+        .sidebar-brand {
+            padding: 20px 20px 16px;
+            border-bottom: 1px solid var(--border-soft);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+        .brand-icon {
+            width: 40px; height: 40px;
+            border-radius: 10px;
+            background: var(--accent);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        .brand-name {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--text);
+            line-height: 1.2;
+        }
+        .brand-sub {
+            font-size: 11px;
+            color: var(--text-3);
+            margin-top: 1px;
+        }
+
+        /* Nav */
+        .sidebar-nav {
+            flex: 1;
+            padding: 12px 12px;
+            overflow-y: auto;
+        }
+        .sidebar-nav::-webkit-scrollbar { width: 0; }
+
+        .nav-group-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 16px 10px 6px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            border-radius: var(--radius);
+            color: var(--text-2);
+            font-size: 13.5px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.12s;
+            margin-bottom: 1px;
+        }
+        .nav-link:hover {
+            background: var(--bg);
+            color: var(--text);
+        }
+        .nav-link.active {
+            background: var(--accent-soft);
+            color: var(--accent);
+            font-weight: 700;
+        }
+        .nav-link .nl-icon {
+            width: 30px; height: 30px;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 15px;
+            background: var(--border-soft);
+            flex-shrink: 0;
+            transition: background 0.12s;
+        }
+        .nav-link:hover .nl-icon { background: #e2e8f0; }
+        .nav-link.active .nl-icon { background: #dbeafe; }
+
+        /* Sidebar footer */
+        .sidebar-footer {
+            padding: 14px 12px;
+            border-top: 1px solid var(--border-soft);
+            flex-shrink: 0;
+        }
+        .sf-user {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: var(--radius);
+            background: var(--bg);
+            margin-bottom: 8px;
+        }
+        .sf-avatar {
+            width: 34px; height: 34px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #2563eb, #7c3aed);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; font-weight: 800; color: #fff;
+            flex-shrink: 0;
+        }
+        .sf-name { font-size: 13px; font-weight: 700; color: var(--text); }
+        .sf-role { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+        .sf-logout {
+            width: 100%;
+            display: flex; align-items: center; justify-content: center; gap: 7px;
+            padding: 8px 14px;
+            border-radius: var(--radius);
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-2);
+            font-size: 13px; font-family: 'Cairo', sans-serif;
+            cursor: pointer;
+            transition: all 0.12s;
+        }
+        .sf-logout:hover {
+            background: var(--red-soft);
+            border-color: #fca5a5;
+            color: var(--red);
+        }
+
+        /* ═══════════════════════════════════════
+           MAIN AREA
+        ═══════════════════════════════════════ */
+        .main {
+            margin-right: var(--sidebar-w);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
 
         /* Topbar */
-        .topbar{
-            background:#fff;border-bottom:1px solid var(--border);
-            height:66px;padding:0 28px;
-            display:flex;align-items:center;justify-content:space-between;
-            position:sticky;top:0;z-index:50;
+        .topbar {
+            position: sticky; top: 0; z-index: 50;
+            height: var(--topbar-h);
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
         }
-        .topbar-left{display:flex;align-items:center;gap:14px}
-        .topbar-title{font-size:18px;font-weight:800;color:var(--text)}
-        .topbar-search{
-            display:flex;align-items:center;gap:8px;
-            background:#f3f4f6;border-radius:10px;padding:8px 14px;min-width:260px;
+        .topbar-left {
+            display: flex; align-items: center; gap: 16px;
         }
-        .topbar-search input{background:none;border:none;outline:none;font-family:'Cairo',sans-serif;font-size:13px;color:var(--text);width:100%}
-        .topbar-search input::placeholder{color:#9ca3af}
-        .topbar-right{display:flex;align-items:center;gap:10px}
-
-        /* Decorative circles (like reference) */
-        .deco-circle{
-            position:fixed;border-radius:50%;
-            pointer-events:none;z-index:0;
+        .topbar-page-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text);
         }
-        .deco-1{width:180px;height:180px;border:2px solid rgba(59,130,246,0.15);top:-40px;left:-40px}
-        .deco-2{width:120px;height:120px;border:2px solid rgba(59,130,246,0.12);bottom:60px;left:20px}
-        .deco-3{width:80px;height:80px;border:2px solid rgba(236,72,153,0.2);bottom:0;right:260px}
-        .deco-dot{position:fixed;border-radius:50%;pointer-events:none;z-index:0}
-        .dot-pink{width:14px;height:14px;background:#ec4899;top:40px;left:110px;opacity:0.7}
-        .dot-blue{width:10px;height:10px;background:#3b82f6;bottom:180px;left:60px;opacity:0.5}
+        .topbar-search {
+            display: flex; align-items: center; gap: 8px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 7px 14px;
+            width: 240px;
+            transition: all 0.12s;
+        }
+        .topbar-search:focus-within {
+            border-color: var(--accent);
+            background: #fff;
+        }
+        .topbar-search input {
+            background: none; border: none; outline: none;
+            font-family: 'Cairo', sans-serif;
+            font-size: 13px; color: var(--text); width: 100%;
+        }
+        .topbar-search input::placeholder { color: var(--text-3); }
+        .topbar-right {
+            display: flex; align-items: center; gap: 8px;
+        }
 
         /* Page content */
-        .page-content{flex:1;padding:24px 28px;position:relative;z-index:1}
+        .page-wrap {
+            flex: 1;
+            padding: 24px 28px;
+        }
+
+        /* Page header (optional inside pages) */
+        .page-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            gap: 16px;
+        }
+        .page-header h1 {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--text);
+        }
+        .page-header p {
+            font-size: 13px;
+            color: var(--text-2);
+            margin-top: 3px;
+        }
 
         /* Alerts */
-        .alert{padding:12px 16px;border-radius:10px;margin-bottom:18px;display:flex;align-items:center;gap:10px;font-size:14px;font-weight:500}
-        .alert-success{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46}
-        .alert-error{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
-
-        /* Medical alert box */
-        .medical-alert{
-            background:linear-gradient(135deg,#fef2f2,#fff5f5);
-            border:2px solid #fca5a5;border-radius:16px;padding:18px 20px;
-            margin-bottom:20px;display:flex;gap:14px;
+        .alert {
+            display: flex; align-items: center; gap: 10px;
+            padding: 12px 16px;
+            border-radius: var(--radius);
+            font-size: 13.5px; font-weight: 500;
+            margin-bottom: 16px;
         }
-        .medical-alert-icon{font-size:30px;flex-shrink:0}
-        .medical-alert h4{color:#991b1b;font-size:15px;font-weight:800;margin-bottom:6px}
-        .medical-alert ul{color:#b91c1c;font-size:13px;padding-right:18px}
+        .alert-success { background: var(--green-soft); border: 1px solid #bbf7d0; color: #14532d; }
+        .alert-error   { background: var(--red-soft);   border: 1px solid #fecaca; color: #7f1d1d; }
 
-        /* Cards */
-        .card{background:#fff;border-radius:16px;box-shadow:0 1px 4px rgba(0,0,0,0.06),0 4px 16px rgba(0,0,0,0.04)}
-        .card-header{padding:18px 22px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between}
-        .card-title{font-size:15px;font-weight:700;color:var(--text)}
-
-        /* Stat cards */
-        .stat-card{
-            background:#fff;border-radius:16px;padding:22px;
-            box-shadow:0 2px 8px rgba(0,0,0,0.06);
-            position:relative;overflow:hidden;
+        /* Medical alert */
+        .medical-alert {
+            background: var(--red-soft);
+            border: 1px solid #fca5a5;
+            border-radius: var(--radius-lg);
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            display: flex; gap: 14px;
         }
-        .stat-card::before{content:'';position:absolute;top:0;right:0;width:4px;height:100%}
-        .stat-card.c-blue::before{background:#3b82f6}
-        .stat-card.c-green::before{background:#10b981}
-        .stat-card.c-purple::before{background:#8b5cf6}
-        .stat-card.c-pink::before{background:#ec4899}
-        .stat-card.c-yellow::before{background:#f59e0b}
-        .stat-card.c-red::before{background:#ef4444}
-        .stat-label{font-size:12px;color:var(--muted);font-weight:600;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.4px}
-        .stat-value{font-size:28px;font-weight:800;color:var(--text);line-height:1}
-        .stat-icon{font-size:32px;position:absolute;top:18px;left:18px;opacity:0.08}
+        .medical-alert-icon { font-size: 28px; flex-shrink: 0; }
+        .medical-alert h4 { color: #991b1b; font-size: 14px; font-weight: 800; margin-bottom: 6px; }
+        .medical-alert ul  { color: #b91c1c; font-size: 13px; padding-right: 18px; }
 
-        /* Buttons */
-        .btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:10px;font-size:13.5px;font-weight:700;font-family:'Cairo',sans-serif;cursor:pointer;border:none;text-decoration:none;transition:all 0.15s;white-space:nowrap}
-        .btn-primary{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;box-shadow:0 4px 12px rgba(37,99,235,0.3)}
-        .btn-primary:hover{box-shadow:0 6px 18px rgba(37,99,235,0.4);transform:translateY(-1px)}
-        .btn-success{background:linear-gradient(135deg,#10b981,#059669);color:#fff;box-shadow:0 4px 12px rgba(16,185,129,0.3)}
-        .btn-success:hover{box-shadow:0 6px 18px rgba(16,185,129,0.4);transform:translateY(-1px)}
-        .btn-pink{background:linear-gradient(135deg,#ec4899,#db2777);color:#fff}
-        .btn-outline{background:#fff;border:1.5px solid var(--border);color:var(--muted)}
-        .btn-outline:hover{border-color:#3b82f6;color:#3b82f6;background:#eff6ff}
-        .btn-danger{background:#ef4444;color:#fff}
-        .btn-sm{padding:7px 14px;font-size:12.5px}
-        .btn-xs{padding:5px 10px;font-size:11.5px;border-radius:8px}
+        /* ═══════════════════════════════════════
+           CARDS
+        ═══════════════════════════════════════ */
+        .card {
+            background: var(--card);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+        }
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-soft);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .card-title { font-size: 14px; font-weight: 700; color: var(--text); }
 
-        /* Table */
-        .table-wrap{overflow-x:auto}
-        table{width:100%;border-collapse:collapse;font-size:14px}
-        thead th{padding:11px 18px;text-align:right;font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #f3f4f6}
-        tbody td{padding:14px 18px;border-bottom:1px solid #f9fafb;vertical-align:middle}
-        tbody tr:hover{background:#fafbff}
-        tbody tr:last-child td{border-bottom:none}
-        .td-name{font-weight:700;color:#1d4ed8;text-decoration:none;font-size:14px}
-        .td-name:hover{text-decoration:underline}
+        /* ── Stat Cards ── */
+        .stat-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px 20px 16px;
+            box-shadow: var(--shadow-sm);
+            position: relative;
+            overflow: hidden;
+            transition: box-shadow 0.15s, transform 0.15s;
+        }
+        .stat-card:hover {
+            box-shadow: var(--shadow);
+            transform: translateY(-1px);
+        }
+        .sc-icon-wrap {
+            width: 40px; height: 40px;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px;
+            margin-bottom: 14px;
+        }
+        .stat-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-2);
+            margin-bottom: 6px;
+        }
+        .stat-value {
+            font-size: 26px;
+            font-weight: 900;
+            color: var(--text);
+            line-height: 1;
+        }
+        .stat-trend {
+            font-size: 11.5px;
+            font-weight: 600;
+            margin-top: 8px;
+            display: flex; align-items: center; gap: 4px;
+        }
+        .trend-up   { color: var(--green); }
+        .trend-down { color: var(--red); }
+        .trend-flat { color: var(--text-3); }
 
-        /* Badges */
-        .badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap}
-        .badge-blue{background:#dbeafe;color:#1d4ed8}
-        .badge-green{background:#d1fae5;color:#065f46}
-        .badge-red{background:#fee2e2;color:#dc2626}
-        .badge-yellow{background:#fef3c7;color:#92400e}
-        .badge-gray{background:#f3f4f6;color:#4b5563}
-        .badge-purple{background:#ede9fe;color:#5b21b6}
-        .badge-pink{background:#fce7f3;color:#9d174d}
+        /* color variants */
+        .sc-blue   .sc-icon-wrap { background: #dbeafe; }
+        .sc-green  .sc-icon-wrap { background: #dcfce7; }
+        .sc-purple .sc-icon-wrap { background: #ede9fe; }
+        .sc-orange .sc-icon-wrap { background: #ffedd5; }
+        .sc-red    .sc-icon-wrap { background: #fee2e2; }
+        .sc-pink   .sc-icon-wrap { background: #fce7f3; }
 
-        /* Form */
-        .form-group{margin-bottom:18px}
-        .form-label{display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:7px}
-        .form-label .req{color:#ef4444}
-        .form-control{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:10px 14px;font-size:14px;font-family:'Cairo',sans-serif;color:var(--text);background:#fff;transition:all 0.15s;outline:none}
-        .form-control:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
-        .form-error{color:#ef4444;font-size:12px;margin-top:5px}
-        textarea.form-control{resize:vertical;min-height:80px}
-        .check-label{display:flex;align-items:center;gap:9px;cursor:pointer;font-size:14px;color:#374151}
-        .check-label input[type=checkbox]{width:16px;height:16px;accent-color:#3b82f6;cursor:pointer}
+        /* legacy aliases so existing pages don't break */
+        .stat-card.c-blue   { } .stat-icon { display:none; }
+        .stat-card.c-green  { }
+        .stat-card.c-purple { }
+        .stat-card.c-pink   { }
+        .stat-card.c-yellow { }
+        .stat-card.c-red    { }
 
-        /* Search bar */
-        .search-bar{background:#fff;border-radius:14px;padding:16px 20px;margin-bottom:22px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
+        /* ── Mini Avatar ── */
+        .mini-avatar {
+            width: 32px; height: 32px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #2563eb, #7c3aed);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 800; color: #fff;
+            flex-shrink: 0;
+        }
 
-        /* Status dropdown */
-        select.status-select{border:1.5px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12.5px;font-family:'Cairo',sans-serif;cursor:pointer;outline:none;background:#fff}
-        select.status-select:focus{border-color:#3b82f6}
+        /* ═══════════════════════════════════════
+           BUTTONS
+        ═══════════════════════════════════════ */
+        .btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 16px;
+            border-radius: var(--radius);
+            font-size: 13px; font-weight: 700;
+            font-family: 'Cairo', sans-serif;
+            cursor: pointer; border: none;
+            text-decoration: none;
+            transition: all 0.12s;
+            white-space: nowrap;
+            line-height: 1;
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+            box-shadow: 0 1px 3px rgba(37,99,235,0.3);
+        }
+        .btn-primary:hover { background: #1d4ed8; box-shadow: 0 4px 12px rgba(37,99,235,0.35); }
+        .btn-success {
+            background: var(--green);
+            color: #fff;
+            box-shadow: 0 1px 3px rgba(22,163,74,0.25);
+        }
+        .btn-success:hover { background: #15803d; }
+        .btn-outline {
+            background: var(--card);
+            border: 1px solid var(--border);
+            color: var(--text-2);
+        }
+        .btn-outline:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+        .btn-danger { background: var(--red); color: #fff; }
+        .btn-danger:hover { background: #b91c1c; }
+        .btn-ghost {
+            background: none; border: none;
+            color: var(--text-2);
+            padding: 8px 10px;
+        }
+        .btn-ghost:hover { background: var(--bg); color: var(--text); }
+        .btn-pink { background: #db2777; color: #fff; }
+        .btn-sm  { padding: 6px 12px; font-size: 12px; }
+        .btn-xs  { padding: 4px 9px; font-size: 11.5px; border-radius: 8px; }
 
-        /* Mini avatar */
-        .mini-avatar{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:#fff;flex-shrink:0}
+        /* ═══════════════════════════════════════
+           TABLE
+        ═══════════════════════════════════════ */
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+        thead th {
+            padding: 10px 16px;
+            text-align: right;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-3);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+            background: var(--bg);
+        }
+        thead th:first-child { border-radius: 0; }
+        tbody td {
+            padding: 13px 16px;
+            border-bottom: 1px solid var(--border-soft);
+            vertical-align: middle;
+        }
+        tbody tr:last-child td { border-bottom: none; }
+        tbody tr:hover { background: #fafbfd; }
+        .td-name {
+            font-weight: 700;
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 13.5px;
+        }
+        .td-name:hover { text-decoration: underline; }
+
+        /* ═══════════════════════════════════════
+           BADGES
+        ═══════════════════════════════════════ */
+        .badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11.5px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .badge-blue   { background: #dbeafe; color: #1d4ed8; }
+        .badge-green  { background: #dcfce7; color: #15803d; }
+        .badge-red    { background: #fee2e2; color: #dc2626; }
+        .badge-yellow { background: #fef9c3; color: #854d0e; }
+        .badge-gray   { background: #f1f5f9; color: #475569; }
+        .badge-purple { background: #ede9fe; color: #6d28d9; }
+        .badge-pink   { background: #fce7f3; color: #9d174d; }
+        .badge-orange { background: #ffedd5; color: #c2410c; }
+
+        /* ═══════════════════════════════════════
+           FORMS
+        ═══════════════════════════════════════ */
+        .form-group  { margin-bottom: 16px; }
+        .form-label  {
+            display: block;
+            font-size: 12.5px; font-weight: 700;
+            color: var(--text-2);
+            margin-bottom: 6px;
+        }
+        .form-label .req { color: var(--red); }
+        .form-control {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 9px 12px;
+            font-size: 13.5px;
+            font-family: 'Cairo', sans-serif;
+            color: var(--text);
+            background: var(--card);
+            transition: all 0.12s;
+            outline: none;
+        }
+        .form-control:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+        }
+        .form-control:disabled { background: var(--bg); color: var(--text-3); }
+        .form-error { color: var(--red); font-size: 11.5px; margin-top: 4px; }
+        textarea.form-control { resize: vertical; min-height: 80px; }
+        .check-label {
+            display: flex; align-items: center; gap: 8px;
+            cursor: pointer; font-size: 13.5px; color: var(--text);
+        }
+        .check-label input[type=checkbox] {
+            width: 15px; height: 15px;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+
+        /* Search/filter bar */
+        .search-bar {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 14px 18px;
+            margin-bottom: 18px;
+            display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+        }
+
+        /* Status select */
+        select.status-select {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 5px 10px;
+            font-size: 12px;
+            font-family: 'Cairo', sans-serif;
+            cursor: pointer;
+            outline: none;
+            background: var(--card);
+            color: var(--text);
+        }
+        select.status-select:focus { border-color: var(--accent); }
 
         /* Print */
-        @media print{.sidebar,.topbar,.no-print{display:none!important}.main-wrap{margin:0!important}}
+        @media print {
+            .sidebar, .topbar, .no-print { display: none !important; }
+            .main { margin: 0 !important; }
+        }
 
-        [x-cloak]{display:none!important}
+        [x-cloak] { display: none !important; }
     </style>
     @stack('styles')
 </head>
 <body>
 
-{{-- Decorative circles like reference --}}
-<div class="deco-circle deco-1"></div>
-<div class="deco-circle deco-2"></div>
-<div class="deco-circle deco-3"></div>
-<div class="deco-dot dot-pink"></div>
-<div class="deco-dot dot-blue"></div>
-
 {{-- SIDEBAR --}}
 <aside class="sidebar">
-    <div class="sidebar-logo">
-        <div class="icon">🦷</div>
+
+    <div class="sidebar-brand">
+        <div class="brand-icon">🦷</div>
         <div>
-            <div class="name">{{ config('app.name') }}</div>
-            <div class="sub">نظام إدارة العيادة</div>
+            <div class="brand-name">{{ config('app.name') }}</div>
+            <div class="brand-sub">نظام إدارة العيادة</div>
         </div>
     </div>
 
     <nav class="sidebar-nav">
-        <a href="{{ route('dashboard') }}" class="nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
-            <span class="nav-icon">📊</span> لوحة التحكم
+
+        <a href="{{ route('dashboard') }}"
+           class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+            <span class="nl-icon">📊</span>
+            لوحة التحكم
         </a>
 
-        <div class="nav-section">المرضى</div>
-        <a href="{{ route('patients.index') }}" class="nav-item {{ request()->routeIs('patients.index') ? 'active' : '' }}">
-            <span class="nav-icon">👥</span> سجل المرضى
+        <div class="nav-group-label">المرضى</div>
+        <a href="{{ route('patients.index') }}"
+           class="nav-link {{ request()->routeIs('patients.index') ? 'active' : '' }}">
+            <span class="nl-icon">👥</span> سجل المرضى
         </a>
-        <a href="{{ route('patients.create') }}" class="nav-item {{ request()->routeIs('patients.create') ? 'active' : '' }}">
-            <span class="nav-icon">➕</span> مريض جديد
+        <a href="{{ route('patients.create') }}"
+           class="nav-link {{ request()->routeIs('patients.create') ? 'active' : '' }}">
+            <span class="nl-icon">➕</span> مريض جديد
         </a>
 
-        <div class="nav-section">العيادة</div>
-        <a href="{{ route('appointments.index') }}" class="nav-item {{ request()->routeIs('appointments.*') ? 'active' : '' }}">
-            <span class="nav-icon">📅</span> المواعيد
+        <div class="nav-group-label">العيادة</div>
+        <a href="{{ route('appointments.index') }}"
+           class="nav-link {{ request()->routeIs('appointments.*') ? 'active' : '' }}">
+            <span class="nl-icon">📅</span> المواعيد
         </a>
         @if(!auth()->user()->isDoctor())
-        <a href="{{ route('invoices.index') }}" class="nav-item {{ request()->routeIs('invoices.*') ? 'active' : '' }}">
-            <span class="nav-icon">💰</span> الفواتير
+        <a href="{{ route('invoices.index') }}"
+           class="nav-link {{ request()->routeIs('invoices.*') ? 'active' : '' }}">
+            <span class="nl-icon">💰</span> الفواتير
         </a>
         @endif
-        <a href="{{ route('prescriptions.index') }}" class="nav-item {{ request()->routeIs('prescriptions.*') ? 'active' : '' }}">
-            <span class="nav-icon">💊</span> الروشتات
+        <a href="{{ route('prescriptions.index') }}"
+           class="nav-link {{ request()->routeIs('prescriptions.*') ? 'active' : '' }}">
+            <span class="nl-icon">💊</span> الروشتات
         </a>
 
         @if(auth()->user()->isAdmin())
-        <div class="nav-section">الإدارة</div>
-        <a href="{{ route('reports.index') }}" class="nav-item {{ request()->routeIs('reports.*') ? 'active' : '' }}">
-            <span class="nav-icon">📈</span> التقارير
+        <div class="nav-group-label">الإدارة</div>
+        <a href="{{ route('reports.index') }}"
+           class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
+            <span class="nl-icon">📈</span> التقارير
         </a>
-        <a href="{{ route('users.index') }}" class="nav-item {{ request()->routeIs('users.*') ? 'active' : '' }}">
-            <span class="nav-icon">👤</span> المستخدمون
+        <a href="{{ route('users.index') }}"
+           class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
+            <span class="nl-icon">👤</span> المستخدمون
         </a>
         @endif
+
     </nav>
 
     <div class="sidebar-footer">
-        <div class="user-card">
-            <div class="user-avatar">{{ mb_substr(auth()->user()->name, 0, 1) }}</div>
+        <div class="sf-user">
+            <div class="sf-avatar">{{ mb_substr(auth()->user()->name, 0, 1) }}</div>
             <div>
-                <div class="user-name">{{ Str::limit(auth()->user()->name, 18) }}</div>
-                <div class="user-role">{{ auth()->user()->role_name }}</div>
+                <div class="sf-name">{{ Str::limit(auth()->user()->name, 18) }}</div>
+                <div class="sf-role">{{ auth()->user()->role_name }}</div>
             </div>
         </div>
         <form method="POST" action="{{ route('logout') }}">
             @csrf
-            <button type="submit" class="btn-logout">🚪 تسجيل الخروج</button>
+            <button type="submit" class="sf-logout">
+                <span>🚪</span> تسجيل الخروج
+            </button>
         </form>
     </div>
+
 </aside>
 
 {{-- MAIN --}}
-<div class="main-wrap">
+<div class="main">
+
     <header class="topbar">
         <div class="topbar-left">
+            <span class="topbar-page-title">@yield('title', 'لوحة التحكم')</span>
             <div class="topbar-search">
-                <span style="color:#9ca3af">🔍</span>
+                <span style="color:var(--text-3);font-size:13px">🔍</span>
                 <input type="text" placeholder="بحث عن مريض...">
             </div>
         </div>
-        <div style="font-weight:800;font-size:17px;color:var(--text);position:absolute;right:270px">
-            @yield('title', 'لوحة التحكم')
-        </div>
         <div class="topbar-right">
             @yield('topbar-actions')
-            <a href="{{ route('patients.create') }}" class="btn btn-primary btn-sm">➕ مريض جديد</a>
-            <a href="{{ route('appointments.create') }}" class="btn btn-success btn-sm">📅 موعد جديد</a>
+            <a href="{{ route('patients.create') }}" class="btn btn-outline btn-sm">➕ مريض جديد</a>
+            <a href="{{ route('appointments.create') }}" class="btn btn-primary btn-sm">📅 موعد جديد</a>
         </div>
     </header>
 
-    <div class="page-content">
+    <div class="page-wrap">
         @if(session('success'))
             <div class="alert alert-success">✅ {{ session('success') }}</div>
         @endif
@@ -326,6 +657,7 @@
         @endif
         @yield('content')
     </div>
+
 </div>
 
 @stack('scripts')

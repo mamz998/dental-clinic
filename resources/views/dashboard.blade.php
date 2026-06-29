@@ -1,48 +1,78 @@
 @extends('layouts.app')
-@section('title','لوحة التحكم')
+@section('title', 'لوحة التحكم')
 @section('content')
 
-{{-- Stats --}}
-<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:16px;margin-bottom:24px">
-    <div class="stat-card c-blue">
-        <div class="stat-icon">👥</div>
-        <div class="stat-label">إجمالي المرضى</div>
-        <div class="stat-value">{{ number_format($stats['total_patients']) }}</div>
-    </div>
-    <div class="stat-card c-green">
-        <div class="stat-icon">🆕</div>
-        <div class="stat-label">جدد هذا الشهر</div>
-        <div class="stat-value">{{ $stats['new_patients_month'] }}</div>
-    </div>
-    <div class="stat-card c-purple">
-        <div class="stat-icon">📅</div>
-        <div class="stat-label">مواعيد اليوم</div>
-        <div class="stat-value">{{ $stats['appointments_today'] }}</div>
-    </div>
-    <div class="stat-card c-pink">
-        <div class="stat-icon">💵</div>
-        <div class="stat-label">إيراد اليوم</div>
-        <div class="stat-value" style="font-size:20px">{{ number_format($stats['income_today'],0) }}<span style="font-size:13px;font-weight:600"> ج</span></div>
-    </div>
-    <div class="stat-card c-yellow">
-        <div class="stat-icon">💰</div>
-        <div class="stat-label">إيراد الشهر</div>
-        <div class="stat-value" style="font-size:20px">{{ number_format($stats['income_month'],0) }}<span style="font-size:13px;font-weight:600"> ج</span></div>
-    </div>
-    <div class="stat-card c-red">
-        <div class="stat-icon">⏳</div>
-        <div class="stat-label">مبالغ معلقة</div>
-        <div class="stat-value" style="font-size:20px;color:#ef4444">{{ number_format($stats['pending_balance'],0) }}<span style="font-size:13px"> ج</span></div>
+{{-- Page header --}}
+<div class="page-header">
+    <div>
+        <h1>لوحة التحكم</h1>
+        <p>{{ now()->translatedFormat('l، j F Y') }}</p>
     </div>
 </div>
 
-{{-- Main grid --}}
-<div style="display:grid;grid-template-columns:1fr 380px;gap:20px">
+{{-- ── Stat Cards ── --}}
+<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:22px">
 
-    {{-- Today appointments table (like reference) --}}
+    <div class="stat-card sc-blue">
+        <div class="sc-icon-wrap">👥</div>
+        <div class="stat-label">إجمالي المرضى</div>
+        <div class="stat-value">{{ number_format($stats['total_patients']) }}</div>
+        <div class="stat-trend trend-up">↑ الكل</div>
+    </div>
+
+    <div class="stat-card sc-green">
+        <div class="sc-icon-wrap">🆕</div>
+        <div class="stat-label">جدد هذا الشهر</div>
+        <div class="stat-value">{{ $stats['new_patients_month'] }}</div>
+        <div class="stat-trend trend-flat">هذا الشهر</div>
+    </div>
+
+    <div class="stat-card sc-purple">
+        <div class="sc-icon-wrap">📅</div>
+        <div class="stat-label">مواعيد اليوم</div>
+        <div class="stat-value">{{ $stats['appointments_today'] }}</div>
+        <div class="stat-trend trend-flat">اليوم</div>
+    </div>
+
+    <div class="stat-card sc-orange">
+        <div class="sc-icon-wrap">💵</div>
+        <div class="stat-label">إيراد اليوم</div>
+        <div class="stat-value" style="font-size:20px">
+            {{ number_format($stats['income_today'] ?? 0, 0) }}
+            <span style="font-size:12px;font-weight:600;color:var(--text-2)">ج</span>
+        </div>
+        <div class="stat-trend trend-flat">اليوم</div>
+    </div>
+
+    <div class="stat-card sc-blue">
+        <div class="sc-icon-wrap">💰</div>
+        <div class="stat-label">إيراد الشهر</div>
+        <div class="stat-value" style="font-size:20px">
+            {{ number_format($stats['income_month'] ?? 0, 0) }}
+            <span style="font-size:12px;font-weight:600;color:var(--text-2)">ج</span>
+        </div>
+        <div class="stat-trend trend-up">↑ هذا الشهر</div>
+    </div>
+
+    <div class="stat-card sc-red">
+        <div class="sc-icon-wrap">⏳</div>
+        <div class="stat-label">مبالغ معلقة</div>
+        <div class="stat-value" style="font-size:20px;color:var(--red)">
+            {{ number_format($stats['pending_balance'] ?? 0, 0) }}
+            <span style="font-size:12px;font-weight:600">ج</span>
+        </div>
+        <div class="stat-trend trend-down">↓ غير محصّل</div>
+    </div>
+
+</div>
+
+{{-- ── Main grid ── --}}
+<div style="display:grid;grid-template-columns:1fr 340px;gap:18px">
+
+    {{-- Today appointments --}}
     <div class="card">
         <div class="card-header">
-            <span class="card-title">📅 مواعيد اليوم</span>
+            <span class="card-title">مواعيد اليوم</span>
             <a href="{{ route('appointments.create') }}" class="btn btn-primary btn-sm">+ موعد جديد</a>
         </div>
         <div class="table-wrap">
@@ -59,96 +89,142 @@
                 <tbody>
                     @forelse($todayAppointments as $apt)
                         <tr>
-                            <td style="font-weight:700;color:#1d4ed8;font-size:14px">{{ $apt->starts_at->format('H:i') }}</td>
                             <td>
-                                <a href="{{ route('patients.show',$apt->patient) }}" class="td-name">{{ $apt->patient->name }}</a>
+                                <span style="font-weight:700;color:var(--accent);font-size:13px;
+                                    background:var(--accent-soft);padding:3px 8px;border-radius:6px">
+                                    {{ $apt->starts_at->format('H:i') }}
+                                </span>
                             </td>
-                            <td style="color:#6b7280;font-size:13px">{{ $apt->patient->phone }}</td>
-                            <td style="color:#374151;font-size:13px">{{ $apt->title ?? 'موعد عادي' }}</td>
                             <td>
-                                <form method="POST" action="{{ route('appointments.status',$apt) }}">
+                                <a href="{{ route('patients.show', $apt->patient) }}" class="td-name">
+                                    {{ $apt->patient->name }}
+                                </a>
+                            </td>
+                            <td style="color:var(--text-2);font-size:12.5px">{{ $apt->patient->phone }}</td>
+                            <td style="color:var(--text-2);font-size:12.5px">{{ $apt->title ?? 'موعد عادي' }}</td>
+                            <td>
+                                <form method="POST" action="{{ route('appointments.status', $apt) }}">
                                     @csrf @method('PATCH')
                                     <select name="status" onchange="this.form.submit()" class="status-select">
-                                        @foreach(['scheduled'=>'محدد','confirmed'=>'مؤكد','completed'=>'مكتمل','cancelled'=>'ملغي','no_show'=>'لم يحضر'] as $v=>$l)
-                                            <option value="{{ $v }}" {{ $apt->status===$v?'selected':'' }}>{{ $l }}</option>
+                                        @foreach(['scheduled'=>'محدد','confirmed'=>'مؤكد','completed'=>'مكتمل','cancelled'=>'ملغي','no_show'=>'لم يحضر'] as $v => $l)
+                                            <option value="{{ $v }}" {{ $apt->status === $v ? 'selected' : '' }}>{{ $l }}</option>
                                         @endforeach
                                     </select>
                                 </form>
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" style="text-align:center;padding:48px;color:#9ca3af">
-                            <div style="font-size:40px;margin-bottom:10px">📅</div>
-                            لا يوجد مواعيد اليوم
-                        </td></tr>
+                        <tr>
+                            <td colspan="5" style="text-align:center;padding:48px 16px;color:var(--text-3)">
+                                <div style="font-size:36px;margin-bottom:8px;opacity:0.4">📅</div>
+                                لا يوجد مواعيد اليوم
+                            </td>
+                        </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
         @if($todayAppointments->count())
-        <div style="padding:14px 22px;border-top:1px solid #f3f4f6;text-align:center">
-            <a href="{{ route('appointments.index') }}" style="color:#3b82f6;font-size:13px;font-weight:600;text-decoration:none">عرض الكل ←</a>
+        <div style="padding:12px 20px;border-top:1px solid var(--border-soft)">
+            <a href="{{ route('appointments.index') }}"
+               style="font-size:12.5px;font-weight:600;color:var(--accent);text-decoration:none">
+                عرض كل المواعيد ←
+            </a>
         </div>
         @endif
     </div>
 
     {{-- Right column --}}
-    <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;flex-direction:column;gap:14px">
 
-        {{-- Complete / Urgent circles (like reference) --}}
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div class="card" style="padding:18px;text-align:center">
-                <div style="font-size:12px;color:#6b7280;font-weight:600;margin-bottom:12px">مواعيد مكتملة</div>
-                <div style="position:relative;width:64px;height:64px;margin:0 auto">
-                    <svg viewBox="0 0 64 64" style="width:64px;height:64px;transform:rotate(-90deg)">
-                        <circle cx="32" cy="32" r="26" fill="none" stroke="#f3f4f6" stroke-width="6"/>
-                        <circle cx="32" cy="32" r="26" fill="none" stroke="#3b82f6" stroke-width="6"
-                            stroke-dasharray="{{ $stats['appointments_today']>0 ? round(163.4 * ($todayAppointments->where('status','completed')->count() / max($stats['appointments_today'],1))) : 0 }} 163.4"
-                            stroke-linecap="round"/>
+        {{-- Completion mini cards --}}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+
+            {{-- مكتمل اليوم --}}
+            <div class="card" style="padding:16px;text-align:center">
+                <div style="font-size:11px;font-weight:700;color:var(--text-3);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">مكتملة</div>
+                @php
+                    $completed = $todayAppointments->where('status','completed')->count();
+                    $total     = max($stats['appointments_today'], 1);
+                    $pct       = round(($completed / $total) * 100);
+                    $dash      = round(163.4 * ($completed / $total));
+                @endphp
+                <div style="position:relative;width:60px;height:60px;margin:0 auto">
+                    <svg viewBox="0 0 64 64" style="width:60px;height:60px;transform:rotate(-90deg)">
+                        <circle cx="32" cy="32" r="26" fill="none" stroke="var(--border)" stroke-width="5"/>
+                        <circle cx="32" cy="32" r="26" fill="none" stroke="var(--green)" stroke-width="5"
+                            stroke-dasharray="{{ $dash }} 163.4" stroke-linecap="round"/>
                     </svg>
-                    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#1d4ed8">
-                        {{ $todayAppointments->where('status','completed')->count() }}/{{ $stats['appointments_today'] }}
-                    </div>
+                    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+                        font-size:13px;font-weight:800;color:var(--green)">{{ $pct }}%</div>
+                </div>
+                <div style="font-size:12px;color:var(--text-2);margin-top:8px;font-weight:600">
+                    {{ $completed }} / {{ $stats['appointments_today'] }}
                 </div>
             </div>
-            <div class="card" style="padding:18px;text-align:center">
-                <div style="font-size:12px;color:#6b7280;font-weight:600;margin-bottom:12px">مبالغ معلقة</div>
-                <div style="position:relative;width:64px;height:64px;margin:0 auto">
-                    <svg viewBox="0 0 64 64" style="width:64px;height:64px;transform:rotate(-90deg)">
-                        <circle cx="32" cy="32" r="26" fill="none" stroke="#f3f4f6" stroke-width="6"/>
-                        <circle cx="32" cy="32" r="26" fill="none" stroke="#ec4899" stroke-width="6"
-                            stroke-dasharray="100 163.4" stroke-linecap="round"/>
+
+            {{-- معلق --}}
+            <div class="card" style="padding:16px;text-align:center">
+                <div style="font-size:11px;font-weight:700;color:var(--text-3);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">معلق</div>
+                @php
+                    $pendingAmt = $stats['pending_balance'] ?? 0;
+                    $totalAmt   = max(($stats['income_month'] ?? 0) + $pendingAmt, 1);
+                    $pctPend    = min(round(($pendingAmt / $totalAmt) * 100), 100);
+                    $dashPend   = round(163.4 * ($pctPend / 100));
+                @endphp
+                <div style="position:relative;width:60px;height:60px;margin:0 auto">
+                    <svg viewBox="0 0 64 64" style="width:60px;height:60px;transform:rotate(-90deg)">
+                        <circle cx="32" cy="32" r="26" fill="none" stroke="var(--border)" stroke-width="5"/>
+                        <circle cx="32" cy="32" r="26" fill="none" stroke="var(--red)" stroke-width="5"
+                            stroke-dasharray="{{ $dashPend }} 163.4" stroke-linecap="round"/>
                     </svg>
-                    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#db2777">
-                        معلق
-                    </div>
+                    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+                        font-size:12px;font-weight:800;color:var(--red)">{{ $pctPend }}%</div>
+                </div>
+                <div style="font-size:11.5px;color:var(--text-2);margin-top:8px;font-weight:600">
+                    {{ number_format($pendingAmt, 0) }} ج
                 </div>
             </div>
+
         </div>
 
         {{-- Recent patients --}}
         <div class="card" style="flex:1">
             <div class="card-header">
-                <span class="card-title">👥 آخر المرضى</span>
-                <a href="{{ route('patients.index') }}" style="font-size:12px;color:#3b82f6;text-decoration:none;font-weight:600">عرض الكل</a>
+                <span class="card-title">آخر المرضى</span>
+                <a href="{{ route('patients.index') }}"
+                   style="font-size:12px;color:var(--accent);text-decoration:none;font-weight:600">
+                    عرض الكل
+                </a>
             </div>
             @forelse($recentPatients as $pt)
-                <div style="padding:13px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #f9fafb">
+                <div style="padding:11px 18px;display:flex;align-items:center;
+                    justify-content:space-between;border-bottom:1px solid var(--border-soft)">
                     <div style="display:flex;align-items:center;gap:10px">
-                        <div class="mini-avatar">{{ mb_substr($pt->name,0,1) }}</div>
+                        <div class="mini-avatar">{{ mb_substr($pt->name, 0, 1) }}</div>
                         <div>
-                            <a href="{{ route('patients.show',$pt) }}" style="font-weight:700;font-size:13.5px;color:#111827;text-decoration:none">{{ $pt->name }}</a>
-                            <div style="font-size:11px;color:#9ca3af">{{ $pt->phone }}</div>
+                            <a href="{{ route('patients.show', $pt) }}"
+                               style="font-weight:700;font-size:13px;color:var(--text);text-decoration:none">
+                                {{ $pt->name }}
+                            </a>
+                            <div style="font-size:11px;color:var(--text-3)">{{ $pt->phone }}</div>
                         </div>
                     </div>
-                    @if($pt->hasRisk())
-                        <span class="badge badge-red" style="font-size:11px">⚠️</span>
-                    @endif
+                    <div style="display:flex;align-items:center;gap:6px">
+                        @if($pt->hasRisk())
+                            <span class="badge badge-red" style="font-size:10px">⚠️ خطر</span>
+                        @endif
+                        <a href="{{ route('patients.show', $pt) }}"
+                           style="font-size:11px;color:var(--accent);text-decoration:none;font-weight:600">←</a>
+                    </div>
                 </div>
             @empty
-                <div style="padding:30px;text-align:center;color:#9ca3af;font-size:13px">لا يوجد مرضى بعد</div>
+                <div style="padding:32px;text-align:center;color:var(--text-3);font-size:13px">
+                    لا يوجد مرضى بعد
+                </div>
             @endforelse
         </div>
+
     </div>
 </div>
 
